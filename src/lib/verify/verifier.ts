@@ -49,10 +49,15 @@ export function findUnsupportedNumbers(text: string, allowed: Set<string>): stri
   return numbersIn(text).filter((n) => !allowed.has(n) && !allowed.has(String(Number(n))));
 }
 
+/** Words just before a match that turn it into a non-diagnosis ("I can't say you have…"). */
+const NEGATION = /\b(?:not|n't|cannot|can't|unable to|no way to|whether|if|tell (?:you )?if|say (?:if|whether)|doesn't mean|does not mean)\b[^.]{0,30}$/i;
+
 export function findDiagnosis(text: string): string | null {
-  for (const re of DIAGNOSIS) {
-    const m = text.match(re);
-    if (m) return m[0];
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    for (const re of DIAGNOSIS) {
+      const m = sentence.match(re);
+      if (m && !NEGATION.test(sentence.slice(0, m.index))) return m[0];
+    }
   }
   return null;
 }

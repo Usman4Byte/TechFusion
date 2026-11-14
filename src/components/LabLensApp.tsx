@@ -149,6 +149,66 @@ function NeedsInfoForm({ missing, onSubmit }: { missing: ("age" | "sex")[]; onSu
   );
 }
 
+function Avatar() {
+  return <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white">L</div>;
+}
+
+/** Reveals the answer word by word, like a live AI reply. */
+function useTypewriter(text: string, enabled: boolean, onDone?: () => void) {
+  const [shown, setShown] = useState(enabled ? "" : text);
+  useEffect(() => {
+    if (!enabled) {
+      setShown(text);
+      return;
+    }
+    const words = text.split(/(\s+)/);
+    let i = 0;
+    const step = Math.max(1, Math.ceil(words.length / 90)); // finishes in ~1.5 s
+    const t = setInterval(() => {
+      i += step;
+      setShown(words.slice(0, i).join(""));
+      if (i >= words.length) {
+        clearInterval(t);
+        onDone?.();
+      }
+    }, 18);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, enabled]);
+  return shown;
+}
+
+function BotMessage({ a, animate, onDone }: { a: ChatAnswer; animate: boolean; onDone: () => void }) {
+  const [typedOnce] = useState(animate);
+  const shown = useTypewriter(a.answer, typedOnce, onDone);
+  const [open, setOpen] = useState(false);
+  const passed = a.guard.filter((g) => g.passed).length;
+  return (
+    <div className="flex items-start gap-2">
+      <Avatar />
+      <div className={`max-w-[90%] rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed ${a.kind === "refused" ? "bg-bad-soft" : "bg-gray-soft"}`}>
+        <p className="whitespace-pre-line">{shown}</p>
+        {shown.length >= a.answer.length && (
+          <div className="mt-1.5 text-[11px] text-muted">
+            <button onClick={() => setOpen(!open)} className="hover:underline">
+              🛡 {a.kind === "refused" ? "Blocked by privacy lock" : `${passed} safety checks`}
+              {a.provider ? ` · ${a.provider.replace(/^Gemini \((.*)\)$/, "$1")}` : " · rule-based"}
+            </button>
+            {open && (
+              <ul className="mt-1 space-y-0.5">
+                {a.guard.map((g, i) => (
+                  <li key={i}>{g.passed ? "✓" : "↻"} {g.name}: {g.detail}</li>
+                ))}
+                {a.citations.map((c) => <li key={c}>📄 {c}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChatBox({ source, overrides }: { source: Source; overrides: { age?: number; sex?: Sex } }) {
   const [q, setQ] = useState("");
   const [log, setLog] = useState<{ q: string; a?: ChatAnswer; err?: string }[]>([]);
@@ -167,7 +227,14 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
     setQ("");
     setLog((l) => [...l, { q: question }]);
     try {
-      const a = await postJson<ChatAnswer>("/api/chat", { ...source, ...overrides, question });
+      const history = log
+        .filter((m) => m.a)
+        .slice(-3)
+        .flatMap((m) => [
+          { role: "user" as const, content: m.q },
+          { role: "assistant" as const, content: m.a!.answer },
+        ]);
+      const a = await postJson<ChatAnswer>("/api/chat", { ...source, ...overrides, question, history });
       setLog((l) => l.map((x, i) => (i === l.length - 1 ? { ...x, a } : x)));
     } catch (e) {
       setLog((l) => l.map((x, i) => (i === l.length - 1 ? { ...x, err: (e as Error).message } : x)));
@@ -176,7 +243,7 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
     }
   };
 
-  const suggestions = ["What does my result mean?", "Should I be worried?", "What are Bob Jones's results?"];
+  const suggestions = ["Explain my results simply", "Should I be worried?", "What does each test measure?", "What should I ask my doctor?"];
   return (
     <Card title="Ask about this report" className="no-print">
       <div className="max-h-80 space-y-3 overflow-y-auto">
@@ -190,17 +257,18 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
         {log.map((m, i) => (
           <div key={i} className="space-y-1.5">
             <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-brand px-3 py-2 text-sm text-white">{m.q}</div>
-            {m.a && (
-              <div className={`max-w-[95%] rounded-2xl rounded-bl-sm px-3 py-2 text-sm ${m.a.kind === "refused" ? "bg-bad-soft" : "bg-gray-soft"}`}>
-                <p>{m.a.answer}</p>
-                <p className="mt-1.5 text-[11px] text-muted">
-                  {m.a.guard.map((g) => `${g.passed ? "✓" : "✕"} ${g.name}`).join(" · ")}
-                  {m.a.citations.length > 0 && <> · {m.a.citations.join(", ")}</>}
-                </p>
+            {m.a && <BotMessage a={m.a} animate={i === log.length - 1} onDone={() => endRef.current?.scrollIntoView({ block: "nearest" })} />}
+            {m.err && <div className="text-sm text-bad">{m.err}</div>}
+            {!m.a && !m.err && (
+              <div className="flex items-center gap-2">
+                <Avatar />
+                <div className="flex gap-1 rounded-2xl rounded-bl-sm bg-gray-soft px-3 py-3">
+                  {[0, 1, 2].map((d) => (
+                    <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 150}ms` }} />
+                  ))}
+                </div>
               </div>
             )}
-            {m.err && <div className="text-sm text-bad">{m.err}</div>}
-            {!m.a && !m.err && <div className="text-sm text-muted">Thinking…</div>}
           </div>
         ))}
         <div ref={endRef} />
