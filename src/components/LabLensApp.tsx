@@ -398,7 +398,11 @@ export default function LabLensApp() {
 
   return (
     <div className="relative min-h-screen">
-      {!data && <div className="hero-glow" aria-hidden />}
+      {!data && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <div className="hero-glow" />
+        </div>
+      )}
       {/* Top navigation */}
       <header className="no-print sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
