@@ -45,6 +45,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* One page scrollbar only: clip sideways overflow (the glow) without creating a scroll container. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* Leave room for the sticky top bar when jumping to a section. */
+[id] {
+  scroll-margin-top: 88px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   background: var(--bg);
   color: var(--body);

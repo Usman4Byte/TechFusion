@@ -397,7 +397,7 @@ export default function LabLensApp() {
   const pending = s ? s.needs_info + s.cannot_classify : 0;
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-screen">
       {!data && <div className="hero-glow" aria-hidden />}
       {/* Top navigation */}
       <header className="no-print sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
