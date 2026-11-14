@@ -23,7 +23,9 @@ export async function POST(req: Request) {
     const kb = getKnowledgeBase();
     const analysis = analyze(report, kb, { age: input.age ?? null, sex: input.sex ?? null });
     const result = await answerQuestion(question, report, analysis, allReports(), kb, history ?? []);
-    return NextResponse.json(result);
+    // Which model answered stays on the server.
+    const { answer, kind, citations } = result;
+    return NextResponse.json({ answer, kind, citations, verified: result.guard.every((g) => g.passed || /Verifier|AI provider/.test(g.name)) });
   } catch (err) {
     return errorResponse(err);
   }

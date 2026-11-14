@@ -26,7 +26,8 @@ export async function POST(req: Request) {
       hasUrgent: analysis.hasUrgent,
       summary: analysis.summary,
       results: analysis.results,
-      explanation,
+      // Internal details (which model answered, retries) stay on the server.
+      explanation: { explanations: explanation.explanations, questions: explanation.questions, urgentWarning: explanation.urgentWarning, verification: explanation.verification, latencyMs: explanation.latencyMs },
       safetyNote: "This explains the numbers only. It is not a diagnosis. Only a licensed doctor can diagnose a condition.",
       rules: { boundary: kb.boundaryRule, critical: kb.criticalRule },
     });
