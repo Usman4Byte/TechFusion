@@ -464,6 +464,21 @@ export default function LabLensApp() {
     }
   }, []);
 
+  /** Close the open report and return to the home page. */
+  const goHome = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setData(null);
+    setSource(null);
+    setOverrides({});
+    setError(null);
+    setLoading(false);
+    setUploadedName(null);
+    if (typeof window !== "undefined") {
+      history.replaceState(null, "", window.location.pathname);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const goToApp = (then: "open" | "upload") => {
     appRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (then === "open") setOpenKey((k) => k + 1);
@@ -487,11 +502,16 @@ export default function LabLensApp() {
       {/* Top navigation */}
       <header className="no-print sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <a href="#top" className="flex items-center gap-2">
+          <button type="button" onClick={goHome} aria-label="LabLens home" className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white"><IconLogo /></span>
             <span className="text-lg font-bold tracking-tight text-ink">LabLens</span>
-          </a>
+          </button>
           <nav className="hidden items-center gap-1 rounded-full border border-line bg-panel p-1 text-sm md:flex">
+            {data && (
+              <button type="button" onClick={goHome} className="rounded-full px-4 py-1.5 font-medium text-muted transition hover:text-ink">
+                Home
+              </button>
+            )}
             {(data
               ? [["Ask", "#ask"], ["Results", "#results"], ["Doctor questions", "#questions"]]
               : [["Home", "#top"], ["How it works", "#how"], ["Privacy", "#privacy"]]
@@ -617,6 +637,14 @@ export default function LabLensApp() {
               {data && !loading && (
                 <>
                   {/* Report header */}
+                  <button
+                    type="button"
+                    onClick={goHome}
+                    className="no-print group inline-flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1.5 text-xs font-semibold text-ink shadow-sm transition hover:border-brand/40 hover:text-brand"
+                  >
+                    <IconArrowRight className="h-3.5 w-3.5 rotate-180 transition group-hover:-translate-x-0.5" />
+                    Back to home
+                  </button>
                   <div className="flex flex-wrap items-end justify-between gap-3 px-1">
                     <div>
                       <div className="text-xs font-medium text-muted">
