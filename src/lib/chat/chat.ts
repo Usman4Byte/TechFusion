@@ -37,6 +37,7 @@ Rules you must follow:
 - Never add facts that are not in what you know (no history, causes, statistics or extra medical detail). For aliases, just say the lab's glossary lists them as the same test.
 - If the question is unrelated to lab results (e.g. weather, cooking), say "${NOT_COVERED}" in a friendly way and suggest what you can help with.
 - If a range needs the patient's missing age or sex, say the right range cannot be chosen yet and ask for it.
+- Never mention file names, AI models, rule engines or system internals. Say "your report" or "the lab's reference ranges".
 - Keep answers to 2-5 sentences. No headings, no markdown tables. Don't repeat the patient's question back.`;
 
 function referencePack(kb: KnowledgeBase) {
@@ -49,9 +50,9 @@ function referencePack(kb: KnowledgeBase) {
       test: name,
       alsoCalled: aliases.length ? aliases : undefined,
       normalRanges: ranges.length
-        ? ranges.map((r) => `${r.expectedText ?? `${r.low}-${r.high}`}${r.unit ? " " + r.unit : ""} (${r.sex === "All" ? "all sexes" : r.sex}, age ${r.ageMin}-${r.ageMax}) [${r.source.file}]`)
+        ? ranges.map((r) => `${r.expectedText ?? `${r.low}-${r.high}`}${r.unit ? " " + r.unit : ""} (${r.sex === "All" ? "all sexes" : r.sex}, age ${r.ageMin}-${r.ageMax})`)
         : "no range in the lab files (cannot be classified)",
-      urgentWhen: urgent ? `${urgent.direction === "below" ? "at or below" : "at or above"} ${urgent.threshold} ${urgent.unit} [${urgent.source.file}]` : undefined,
+      urgentWhen: urgent ? `${urgent.direction === "below" ? "at or below" : "at or above"} ${urgent.threshold} ${urgent.unit}` : undefined,
       whatItMeasures: info?.measures,
       ifLow: info?.low || undefined,
       ifHigh: info?.high || undefined,
@@ -76,7 +77,6 @@ function patientPack(report: Report, a: Analysis) {
       status: r.status,
       reason: r.reason,
     })),
-    reportFile: report.file,
   };
 }
 
@@ -114,7 +114,7 @@ const REFUSALS = [
   (tests: string) => `I have to keep other patients' reports private, so I can't help with that one. Your own report is open, and I'd be glad to explain your ${tests} result.`,
 ];
 
-async function aiRefusal(q: string, report: Report, a: Analysis, kb: KnowledgeBase): Promise<{ text: string; provider: string | null }> {
+async function aiRefusal(q: string, a: Analysis): Promise<{ text: string; provider: string | null }> {
   const tests = a.results.map((r) => r.canonical ?? r.rawName).join(" and ");
   const fallback = REFUSALS[Math.floor(Math.random() * REFUSALS.length)](tests);
   if (!anyProviderConfigured()) return { text: fallback, provider: null };
@@ -153,7 +153,7 @@ export async function answerQuestion(
   const privacy = checkPrivacy(q, report, all, kb);
   guard.push({ name: "Privacy lock", passed: privacy.allowed, detail: privacy.allowed ? `Only ${report.patientId}'s data is used` : `Blocked in code: mentions "${privacy.matched}"` });
   if (!privacy.allowed) {
-    const r = await aiRefusal(q, report, analysis, kb);
+    const r = await aiRefusal(q, analysis);
     return {
       answer: r.text,
       kind: "refused",

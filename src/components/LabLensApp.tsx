@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import type { Demographic, Sex, Status, TestResult } from "@/lib/types";
 import type { ExplainResult } from "@/lib/explain/explain";
 import type { ChatAnswer } from "@/lib/chat/chat";
@@ -18,7 +17,7 @@ interface AnalyzeResponse {
   explanation: ExplainResult;
   safetyNote: string;
 }
-interface Health { providers: { id: string; label: string; configured: boolean; state: string; model: string }[] }
+interface Health { ok: boolean }
 
 type Source = { patientId: string } | { reportText: string; fileName?: string };
 
@@ -39,16 +38,23 @@ function ProviderDot() {
     const t = setInterval(load, 20000);
     return () => clearInterval(t);
   }, []);
-  const configured = h?.providers.filter((p) => p.configured) ?? [];
-  const ok = configured.filter((p) => p.state === "ok");
-  const color = !h ? "bg-muted" : configured.length === 0 ? "bg-info" : ok.length ? "bg-ok" : "bg-warn";
-  const label = !h ? "Checking AI…" : configured.length === 0 ? "Safe template mode" : ok.length ? `AI ready · ${ok[0].label}` : "AI busy · fallback on";
+  const color = h ? "bg-ok" : "bg-muted";
+  const label = h ? "Assistant online" : "Connecting…";
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs text-muted" title={configured.map((p) => `${p.label}: ${p.state}`).join("\n")}>
+    <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs text-muted">
       <span className={`h-2 w-2 rounded-full ${color}`} />
       {label}
     </span>
   );
+}
+
+/** Friendly document names instead of raw file names. */
+function sourceLabel(file: string): string {
+  if (/glossary/i.test(file)) return "Lab glossary";
+  if (/urgent|critical|dangerous/i.test(file)) return "Urgent values list";
+  if (/range/i.test(file)) return "Lab reference ranges";
+  if (/safety|rule/i.test(file)) return "Lab safety rules";
+  return "Your report";
 }
 
 function WhyPanel({ r }: { r: TestResult }) {
@@ -58,9 +64,7 @@ function WhyPanel({ r }: { r: TestResult }) {
         <li key={i}>
           <span className="font-medium">{e.label}:</span> <span>{e.detail}</span>
           {e.source && (
-            <span className="ml-1 rounded bg-gray-soft px-1.5 py-0.5 font-mono text-[11px] text-muted">
-              {e.source.file}:{e.source.line}
-            </span>
+            <span className="ml-1 rounded bg-gray-soft px-1.5 py-0.5 text-[11px] text-muted">{sourceLabel(e.source.file)}</span>
           )}
         </li>
       ))}
@@ -68,7 +72,7 @@ function WhyPanel({ r }: { r: TestResult }) {
   );
 }
 
-function ResultRow({ r, text, source, grade }: { r: TestResult; text?: string; source?: string; grade?: number }) {
+function ResultRow({ r, text }: { r: TestResult; text?: string }) {
   const [open, setOpen] = useState(false);
   const alias = r.canonical && r.canonical.toLowerCase() !== r.rawName.toLowerCase();
   const unit = r.unit && !r.rawValue.includes(r.unit) ? ` ${r.unit}` : "";
@@ -97,8 +101,7 @@ function ResultRow({ r, text, source, grade }: { r: TestResult; text?: string; s
         <p className="mt-2 leading-relaxed">
           {text}
           <span className="ml-2 inline-flex gap-1 align-middle text-[10px] text-muted">
-            <span className="rounded bg-gray-soft px-1.5 py-0.5">{source === "ai" ? "AI · verified" : "rule-based"}</span>
-            {grade !== undefined && <span className="rounded bg-gray-soft px-1.5 py-0.5">grade {grade}</span>}
+            <span className="rounded bg-ok-soft px-1.5 py-0.5 text-ok">✓ Verified</span>
           </span>
         </p>
       )}
@@ -181,27 +184,14 @@ function useTypewriter(text: string, enabled: boolean, onDone?: () => void) {
 function BotMessage({ a, animate, onDone }: { a: ChatAnswer; animate: boolean; onDone: () => void }) {
   const [typedOnce] = useState(animate);
   const shown = useTypewriter(a.answer, typedOnce, onDone);
-  const [open, setOpen] = useState(false);
-  const passed = a.guard.filter((g) => g.passed).length;
   return (
     <div className="flex items-start gap-2">
       <Avatar />
       <div className={`max-w-[90%] rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed ${a.kind === "refused" ? "bg-bad-soft" : "bg-gray-soft"}`}>
         <p className="whitespace-pre-line">{shown}</p>
         {shown.length >= a.answer.length && (
-          <div className="mt-1.5 text-[11px] text-muted">
-            <button onClick={() => setOpen(!open)} className="hover:underline">
-              🛡 {a.kind === "refused" ? "Blocked by privacy lock" : `${passed} safety checks`}
-              {a.provider ? ` · ${a.provider.replace(/^Gemini \((.*)\)$/, "$1")}` : " · rule-based"}
-            </button>
-            {open && (
-              <ul className="mt-1 space-y-0.5">
-                {a.guard.map((g, i) => (
-                  <li key={i}>{g.passed ? "✓" : "↻"} {g.name}: {g.detail}</li>
-                ))}
-                {a.citations.map((c) => <li key={c}>📄 {c}</li>)}
-              </ul>
-            )}
+          <div className={`mt-1.5 text-[11px] font-medium ${a.kind === "refused" ? "text-bad" : "text-ok"}`}>
+            {a.kind === "refused" ? "🔒 Blocked for privacy" : "✓ Verified answer"}
           </div>
         )}
       </div>
@@ -329,12 +319,11 @@ export default function LabLensApp() {
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand font-bold text-white">L</div>
             <div>
               <div className="font-bold leading-tight">LabLens</div>
-              <div className="hidden text-xs text-muted sm:block">Your lab report in simple words · computed, cited, checked</div>
+              <div className="hidden text-xs text-muted sm:block">Your lab report in simple words</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ProviderDot />
-            <Link href="/tests" className="rounded-full border border-line px-3 py-1 text-xs font-medium hover:bg-gray-soft">Self-test</Link>
           </div>
         </div>
       </header>
@@ -353,7 +342,7 @@ export default function LabLensApp() {
               }}
             />
           </Card>
-          <p className="px-1 text-xs text-muted">Only the open report is ever shown or sent to the AI. Other patients stay locked.</p>
+          <p className="px-1 text-xs text-muted">Your report stays private. Only the report you open is used.</p>
         </aside>
 
         <main className="min-w-0 space-y-4">
@@ -362,13 +351,13 @@ export default function LabLensApp() {
               <div className="py-10 text-center">
                 <h1 className="text-2xl font-bold">Understand your lab report</h1>
                 <p className="mx-auto mt-2 max-w-xl text-muted">
-                  Pick a report on the left. Each result is checked against the lab&apos;s own range sheets by exact rules, explained in simple words, and every step shows where it came from.
+                  Choose a report or upload your own. We&apos;ll explain every result in simple words, show what is normal, and help you prepare questions for your doctor.
                 </p>
                 <div className="mx-auto mt-6 grid max-w-2xl gap-3 text-left text-sm sm:grid-cols-3">
                   {[
-                    ["1 · Compute", "Rules match names, convert units and pick the right range for age and sex."],
-                    ["2 · Explain", "AI writes simple sentences using only those facts."],
-                    ["3 · Check", "A verifier rejects invented numbers, diagnoses and hard words."],
+                    ["Clear results", "Each test is checked against the right normal range for your age and sex."],
+                    ["Simple words", "Every result is explained in plain, easy language."],
+                    ["Safe & private", "Only your report is used. We never diagnose: that's for your doctor."],
                   ].map(([h, d]) => (
                     <div key={h} className="rounded-xl border border-line p-3">
                       <div className="font-semibold text-brand">{h}</div>
@@ -405,7 +394,7 @@ export default function LabLensApp() {
                         const d = data.patient[k];
                         return (
                           <span key={k} className={`rounded-full px-2.5 py-0.5 ${d.value === null ? "bg-info-soft text-info" : "bg-gray-soft"}`}>
-                            {k === "age" ? "Age" : "Sex"}: {d.value ?? `missing (${d.raw ?? "not in report"})`}
+                            {k === "age" ? "Age" : "Sex"}: {d.value ?? "Not provided"}
                             {d.providedByUser ? " · you told us" : ""}
                           </span>
                         );
@@ -442,7 +431,7 @@ export default function LabLensApp() {
                     <ul className="space-y-3">
                       {data.results.map((r) => {
                         const e = textFor(r.id);
-                        return <ResultRow key={r.id} r={r} text={e?.text} source={e?.source} grade={e?.grade} />;
+                        return <ResultRow key={r.id} r={r} text={e?.text} />;
                       })}
                     </ul>
                     {data.results.length === 0 && <p className="text-muted">No test results were found in this report.</p>}
@@ -465,24 +454,6 @@ export default function LabLensApp() {
                   <Card title="Body map">
                     <BodyMap results={data.results} />
                   </Card>
-                  {ex && (
-                    <Card title="Safety checks" className="no-print">
-                      <ul className="space-y-1.5 text-sm">
-                        {ex.verification.checks.map((c) => (
-                          <li key={c.name} className="flex gap-2" title={c.detail}>
-                            <span className={c.passed ? "text-ok" : "text-warn"}>{c.passed ? "✓" : "!"}</span>
-                            <span>{c.name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-3 space-y-0.5 border-t border-line pt-3 text-xs text-muted">
-                        <div>Mode: {ex.mode === "template" ? "rule-based (no AI)" : ex.mode === "ai-verified" ? "AI, fully verified" : "AI + rule-based fixes"}</div>
-                        {ex.provider && <div>Model: {ex.provider} · {ex.model}</div>}
-                        <div>Attempts: {ex.attempts} · {(ex.latencyMs / 1000).toFixed(1)}s · cost $0</div>
-                        {ex.notes.map((n, i) => <div key={i}>• {n}</div>)}
-                      </div>
-                    </Card>
-                  )}
                 </div>
               </div>
             </>

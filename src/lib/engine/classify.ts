@@ -80,7 +80,7 @@ export function classifyTest(
   }
   const canonical = match.canonical;
   if (match.via !== "exact") {
-    const how = match.via === "supplementary" ? "common report label (documented assumption)" : match.via;
+    const how = match.via === "supplementary" ? "same test, different label" : "same test, listed in the lab glossary";
     evidence.push({ label: "Name match", detail: `"${t.rawName}" = ${canonical} (${how})`, source: match.source });
   }
 
