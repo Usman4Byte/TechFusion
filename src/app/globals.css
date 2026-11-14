@@ -66,6 +66,25 @@ body {
   }
 }
 
+/* Pointer on everything clickable; "not allowed" on disabled controls. */
+button,
+a[href],
+select,
+summary,
+label[for],
+[role="button"],
+[role="option"],
+input[type="file"],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: not-allowed;
+}
+
 body {
   background: var(--bg);
   color: var(--body);
