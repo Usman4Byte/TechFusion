@@ -1,108 +1,223 @@
-# LabLens: a glass-box lab report explainer
+# LabLens
 
-**TechFusion '26 AI Hackathon · Challenge B (Medical Lab Report Explainer)**
+**Understand your lab report in plain language.**
 
-> Every result is **computed** by exact rules, **cited** to the lab's own files, and **checked** before a patient reads it.
+LabLens reads a patient's lab report, checks every result against the lab's own reference ranges, and explains it in simple words, with questions to ask the doctor. It never diagnoses, never guesses, and only ever uses the report that is open.
 
-- Live app: _add Vercel link_
-- Demo video: _add link_
-
----
-
-## The idea
-
-The CityLab files are about 95% boilerplate (HIPAA, CLIA, QA appendices). The real data is a few short lines. A plain "embed and ask the LLM" RAG can grab the wrong paragraph, mis-convert units or guess a range. LabLens splits the job:
-
-```
- data/*.md ──► 1. Noise-proof parser ──► 2. Rule engine (TypeScript, no AI)
-                (drops appendices &       alias → unit conversion → range by age/sex
-                 long boilerplate,        → edge rule → urgent check → evidence trail
-                 keeps line numbers)                 │
-                                                     ▼
-                                 3. Guard: patient lock · ask for missing age/sex
-                                           · "cannot be classified from the files"
-                                                     ▼
-                                 4. AI writer: simple words from the facts only
-                                                     ▼
-                                 5. Verifier: numbers match? no diagnosis? agrees
-                                    with the engine? reading grade ≤ 8?
-                                    ✕ → rewrite once → safe template fallback
-```
-
-**The AI never decides a result.** It only words facts the engine has already proven, and the verifier blocks anything it adds.
-
-## Features
+Built for **TechFusion '26 AI Hackathon, Challenge B: Medical Lab Report Explainer**.
 
 | | |
 |---|---|
-| **Exact classification** | Normal / Low / High / Urgent / Needs info / Cannot be classified, with the range sheets' edge rule (a value exactly on a limit is normal) and inclusive age bands |
-| **Name & unit matching** | Glossary aliases (SGPT→ALT, SGOT→AST, FBS, Hb, PLT, WBC). Exact conversions with the working shown, e.g. `6.0 mmol/L × 18 = 108 mg/dL` |
-| **"Why?" panel** | Every result shows each step with `file:line` citations |
-| **Never guesses** | Missing age or sex → asks (not even a guess from the name). Unknown test or unit → "cannot be classified from the files" |
-| **Urgent warnings** | Red banner + "Please see a doctor today". Urgent still fires when age or sex is missing |
-| **Privacy lock** | Questions naming another patient (name, ID, MRN, "all patients") are refused **in code, before any AI call** (safety rule 1) |
-| **Verified AI text** | Rejects invented numbers, diagnosis wording, contradictions with the engine and text above class 8 reading level |
-| **Reliability** | **Round-robin across fast free-tier models** (Gemini 3.5 Flash Lite → 3.1 Flash Lite → 3 Flash → …) to spread load over each model's quota; on failure the next model is tried, then Groq / OpenRouter if keys exist. 429 cool-down with `retry-after`, backoff, timeouts, response cache, and a fully working **no-AI template mode** |
-| **Body map** | Organs coloured by their worst result |
-| **Doctor questions** | 3–5 questions based on the results that are not normal, plus a printable doctor visit sheet |
-| **Paste any report** | Works on new reports in any of the corpus formats (bullets, tables, `Test:/Result:` pairs, `->` arrows) |
-| **Live self-test** | `/tests` runs 40 tricky cases against the real engine |
-| **Read aloud** | Browser speech, no extra API |
+| Live app | _add link_ |
+| Demo video | _add link_ |
 
-## API
+---
 
-| Method | Path | Body / notes |
-|---|---|---|
-| POST | `/api/analyze` | `{ "patientId": "P004" }` or `{ "reportText": "...", "age"?: 40, "sex"?: "Female", "useAI"?: false }` |
-| POST | `/api/chat` | same, plus `"question": "..."` (locked to that one patient) |
-| GET | `/api/patients` | report list (IDs + initials only) |
-| GET | `/api/health` | corpus counts + AI provider status |
-| GET | `/api/selftest` | runs the self-test suite as JSON |
+## Contents
 
-Input is validated with zod. Errors return clear JSON messages with the right status code (400 / 404 / 422 / 500).
+1. [Features](#features)
+2. [How it works](#how-it-works)
+3. [Getting started](#getting-started)
+4. [API](#api)
+5. [Testing](#testing)
+6. [Design decisions](#design-decisions)
+7. [Known limitations](#known-limitations)
+8. [Project structure](#project-structure)
 
-## Run locally
+---
+
+## Features
+
+### Reading results
+- **Reads any report layout**: bullet lists, tables, `Test:` / `Result:` pairs and `->` arrows. Boilerplate text is ignored automatically.
+- **Matches test names**: aliases from the lab glossary are recognised (SGPT = ALT, SGOT = AST, FBS = Fasting Blood Sugar, Hb, PLT, WBC).
+- **Converts units**: values in other units are converted before comparison, and the working is shown (e.g. `6.0 mmol/L × 18 = 108 mg/dL`).
+- **Picks the right range**: by test, age and sex. Values exactly on a limit count as normal, as the range sheet requires.
+
+### Classifying results
+Each result gets exactly one status:
+
+| Status | Meaning |
+|---|---|
+| Normal | Inside the normal range |
+| Low / High | Below or above the normal range |
+| Urgent | At a dangerous level from the lab's urgent-values list |
+| Needs info | Age or sex is missing, so the right range can't be chosen; the user is asked |
+| Not classified | No range or no valid unit in the lab files, so it "cannot be classified from the files" |
+
+### Explaining results
+- **Plain-language explanations** a class 8 student can follow.
+- **Urgent alert**: a clear "Please see a doctor today" banner for dangerous values.
+- **3–5 doctor questions** based on the results that are not normal.
+- **"How was this worked out?"**: a step-by-step breakdown for every result, with its source.
+- **Visuals**: a range bar for each result, summary cards and a body overview.
+- **Listen and print**: read results aloud, or print a summary for the doctor visit.
+
+### Asking questions
+- **Chat assistant** that answers questions about the open report, remembers the conversation and explains lab terms from the reference sheets.
+- **Never diagnoses**: questions like "Do I have diabetes?" get an explanation of the relevant values and a referral to a doctor.
+- **Stays on topic**: medicine, diet or unrelated questions are politely redirected.
+
+### Safety and privacy
+- **Patient lock**: questions about any other patient (by name, ID or "all patients") are blocked **in code, before any AI call**.
+- **Verified AI text**: every AI answer is checked for invented numbers, diagnosis wording, contradictions with the computed result and reading level. Failing text is rewritten or replaced with a safe version.
+- **Never guesses**: missing age or sex is requested, never inferred from a name.
+
+### Using your own report
+- Choose a built-in report from a searchable list, **upload** a `.md` / `.txt` / `.csv` file, or **paste** report text.
+- Uploaded reports go through exactly the same pipeline and produce identical results.
+
+### Reliability
+- **Round-robin across free-tier models** to spread load over each model's quota, with automatic failover.
+- Rate-limit cool-down, timeouts, retries and response caching.
+- **Works without AI**: if every model is unavailable, results are still classified and explained with safe built-in wording.
+
+---
+
+## How it works
+
+```
+Report ──► Parser ──► Rule engine ──► Safety guard ──► AI writer ──► Verifier ──► Patient
+```
+
+| Step | What it does |
+|---|---|
+| **Parser** | Removes boilerplate and extracts demographics and results, keeping line numbers for citations. |
+| **Rule engine** | Matches names, converts units, selects the range, applies the edge rule and urgent limits. Pure code, no AI. |
+| **Safety guard** | Locks to one patient, asks for missing details and marks unknown tests as not classified. |
+| **AI writer** | Turns the computed facts into simple sentences and doctor questions. It never decides a result. |
+| **Verifier** | Rejects invented numbers, diagnoses, contradictions and hard wording, then asks for a rewrite or falls back to safe wording. |
+
+The AI only words facts the rule engine has already worked out, so results are accurate and repeatable.
+
+---
+
+## Getting started
+
+**Requirements:** Node.js 20+
 
 ```bash
 npm install
-cp .env.example .env.local   # add at least one key (or none: template mode)
-npm run dev                  # http://localhost:3000
-npm test                     # 72 unit tests
+cp .env.example .env.local    # add an API key (optional)
+npm run dev                   # http://localhost:3000
 ```
 
-Deployed on Vercel. The corpus in `data/` is bundled at build time by `scripts/build-corpus.mjs`, so there are no file-system reads at runtime.
+**Environment variables** (all optional; without a key the app uses safe built-in wording):
 
-## Decisions & assumptions (from reading the files)
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY` | Gemini free tier (primary) |
+| `GROQ_API_KEY` | Groq (optional backup) |
+| `OPENROUTER_API_KEY` | OpenRouter (optional backup) |
+| `GEMINI_MODELS` | Override the model pool (comma-separated) |
 
-1. **Urgent limits are inclusive.** The directive says results that "hit or pass" a threshold are urgent, while its table says "Less than / Greater than". We follow "hit or pass" (safer): Hb exactly 7.0 is urgent.
-2. **Edge rule applies everywhere.** It's written in the hematology sheet. The corpus README's example (cholesterol exactly 200) shows it applies to all tests.
-3. **Unit conversions.** The files give no factors, so we only use mathematically exact ones: glucose ×18 and cholesterol ×38.67 (molar mass), g/L→g/dL, ×10⁹/L→cells/mcL, µIU/mL = mIU/L. Anything else → "cannot be classified".
-4. **Extra report labels.** "pH Level" → Urine pH and "Protein" → Urine Protein (urine report). Not in the glossary; listed in `src/lib/engine/aliases.ts`.
-5. **Plain-language descriptions** of what each test measures are short general-health sentences (`src/lib/explain/testInfo.ts`), because the lab files contain only names, ranges and limits. They never state a disease.
+**Deploy:** import the repository into Vercel and add `GEMINI_API_KEY`. The lab files in `data/` are bundled at build time.
 
-## Known failure cases
+---
 
-- **Ages outside 18–100** cannot be classified, because the range sheets only cover adults.
-- **RBC** has an alias but no range, so it's always "cannot be classified".
-- **Units we don't know exactly** (e.g. hemoglobin in mmol/L, which needs a specific factor) are not converted.
-- **Free-form scanned/PDF reports** aren't supported. Input must be text (paste works for any of the corpus layouts).
-- **Very unusual report layouts** (e.g. value before the test name, results across multiple columns) may not be parsed.
-- **Privacy detection** checks names, IDs, MRNs and phrases such as "other patients". A cleverly disguised question about another person (e.g. only a nickname) could get past the name check. Even then, the AI only ever receives the open patient's data, so it cannot reveal anything else.
-- **Reading level** is a heuristic (Flesch-Kincaid with test names excluded), not a guarantee.
-- **AI rate limits:** if every provider is rate-limited, explanations fall back to rule-based templates (still correct, less natural).
-- **Chat** answers only from the open report. General medical questions get "The lab files do not cover this question."
+## API
 
-## Project layout
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/analyze` | Classify and explain a report |
+| `POST` | `/api/chat` | Ask a question about a report |
+| `GET` | `/api/patients` | List built-in reports (IDs and initials only) |
+| `GET` | `/api/health` | Service status |
+| `GET` | `/api/selftest` | Run the built-in test cases |
+
+**Analyze a built-in report**
+
+```json
+POST /api/analyze
+{ "patientId": "P004" }
+```
+
+**Analyze your own report**
+
+```json
+POST /api/analyze
+{ "reportText": "Patient Full Name: ...\nRecorded Age: 40\n...", "age": 40, "sex": "Female" }
+```
+
+**Ask a question**
+
+```json
+POST /api/chat
+{ "patientId": "P009", "question": "Why is my ALT high?", "history": [] }
+```
+
+All input is validated. Errors return a clear JSON message with the matching status code (`400`, `404`, `422`, `500`).
+
+---
+
+## Testing
+
+```bash
+npm test
+```
+
+- **88 automated tests**: every organizer report, boundary values, age limits, aliases, unit conversions, privacy, the verifier and upload parity.
+- **Live self-test page** at `/tests`: runs 40 tricky cases against the real engine in the browser.
+
+**Expected results for the organizer reports:**
+
+| Report | Result |
+|---|---|
+| P001 | Hemoglobin normal · WBC normal |
+| P002 | SGPT (ALT) 45 → normal: exactly on the female limit |
+| P003 | Needs info: age and sex missing |
+| P004 | Hemoglobin 6.5 → **urgent** · Platelets low |
+| P005 | 6.0 mmol/L → 108 mg/dL → high |
+| P006 | Serum Ferritin → not classified (no range) |
+| P007 | TSH normal |
+| P008 | Urine pH normal · Protein normal |
+| P009 | ALT high · AST high |
+| P010 | Cholesterol 200 → normal: exactly on the limit |
+| P011 | WBC high · Platelets low |
+| P012 | Needs info: sex missing (AST range depends on it) |
+| P013 | Fasting sugar 350 → **urgent** |
+| P014 | FBS normal · SGOT (AST) normal |
+
+---
+
+## Design decisions
+
+1. **Urgent limits include the threshold.** The urgent-values file says results that "hit or pass" a limit are urgent, so a hemoglobin of exactly 7.0 is urgent.
+2. **Edge rule applies to every test.** It's stated in the hematology sheet, and the organizer example (cholesterol exactly 200) shows it applies everywhere.
+3. **Only exact unit conversions.** The files give no conversion factors, so only mathematically exact ones are used: glucose ×18, cholesterol ×38.67, g/L→g/dL, ×10⁹/L→cells/mcL, µIU/mL = mIU/L. Anything else is not classified.
+4. **Two extra labels.** "pH Level" and "Protein" in urine reports map to Urine pH and Urine Protein.
+5. **Test descriptions.** The lab files contain only names and ranges, so short general descriptions of what each test measures are included. They never name a disease.
+
+---
+
+## Known limitations
+
+- Reference ranges cover ages **18–100** only; other ages can't be classified.
+- **RBC** has an alias but no range, so it's always not classified.
+- Units without an exact conversion (e.g. hemoglobin in mmol/L) aren't converted.
+- **PDF and image reports** aren't supported; reports must be text.
+- Very unusual layouts (e.g. value before the test name, multi-column tables) may not be read.
+- Privacy detection covers names, IDs, MRNs and phrases such as "other patients". A disguised reference such as a nickname may slip through, but the AI never receives any other patient's data, so nothing can be revealed.
+- The reading-level check is an estimate, not a guarantee.
+- If every AI model is rate-limited, explanations use built-in wording: still correct, but less conversational.
+
+---
+
+## Project structure
 
 ```
-src/lib/data/       parser for reports + reference sheets (noise removal, line numbers)
-src/lib/engine/     aliases, units, classification (pure, tested)
-src/lib/guard/      privacy lock, diagnosis-question detection
-src/lib/llm/        provider router (fallback, backoff, cache)
-src/lib/explain/    AI writer + safe templates
-src/lib/verify/     verifier + readability
-src/lib/selftest/   live self-test cases
-src/app/api/        analyze, chat, patients, health, selftest
-src/components/     UI
-tests/              vitest suites
+data/                 Lab files (reports, ranges, urgent values, glossary, safety rules)
+src/app/              Pages and API routes
+src/components/       User interface
+src/lib/data/         Report and reference-file parsers
+src/lib/engine/       Name matching, unit conversion, classification
+src/lib/guard/        Privacy and diagnosis guards
+src/lib/llm/          Model routing, failover and caching
+src/lib/explain/      Explanations and doctor questions
+src/lib/chat/         Chat assistant
+src/lib/verify/       Output verifier and reading-level check
+src/lib/selftest/     Built-in test cases
+tests/                Automated tests
 ```
+
+**Stack:** Next.js 15 · TypeScript · Tailwind CSS · Zod · Vitest · Gemini (free tier)
