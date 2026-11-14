@@ -2,7 +2,7 @@ import Link from "next/link";
 import { runSelfTest } from "@/lib/selftest/run";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "LabLens · Self-test" };
+export const metadata = { title: "Lab Report Explainer · Self-test" };
 
 export default function TestsPage() {
   const { passed, total, cases } = runSelfTest();
@@ -12,7 +12,7 @@ export default function TestsPage() {
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link href="/" className="text-sm text-brand hover:underline">← Back to LabLens</Link>
+          <Link href="/" className="text-sm text-brand hover:underline">← Back to Lab Report Explainer</Link>
           <h1 className="mt-1 text-2xl font-bold">Live self-test</h1>
           <p className="text-muted">Every tricky case runs against the real rule engine each time this page loads.</p>
         </div>

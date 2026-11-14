@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LabLens",
+  title: "Lab Report Explainer",
   description: "Understand your lab report in plain language.",
 };
 

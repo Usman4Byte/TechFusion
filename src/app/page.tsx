@@ -1,5 +1,5 @@
-import LabLensApp from "@/components/LabLensApp";
+import LabReportApp from "@/components/LabReportApp";
 
 export default function Home() {
-  return <LabLensApp />;
+  return <LabReportApp />;
 }

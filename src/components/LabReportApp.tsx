@@ -5,6 +5,7 @@ import type { Demographic, Sex, Status, TestResult } from "@/lib/types";
 import type { ExplainResult } from "@/lib/explain/explain";
 import type { ChatAnswer } from "@/lib/chat/chat";
 import { BodyMap } from "./BodyMap";
+import { Logo, LogoMark } from "./Logo";
 import { ReportPicker, type PatientItem } from "./ReportPicker";
 import { Card, GhostButton, RangeGauge, StatusChip } from "./ui";
 import {
@@ -16,7 +17,6 @@ import {
   IconFlask,
   IconInfo,
   IconLock,
-  IconLogo,
   IconPrint,
   IconPulse,
   IconSend,
@@ -179,8 +179,8 @@ function NeedsInfoForm({ missing, onSubmit }: { missing: ("age" | "sex")[]; onSu
 
 function Avatar() {
   return (
-    <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand text-white">
-      <IconLogo className="h-4 w-4" />
+    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-panel shadow-sm">
+      <LogoMark className="h-5 w-5" />
     </div>
   );
 }
@@ -433,7 +433,7 @@ const FEATURES = [
   { icon: <IconShield className="h-5 w-5" />, title: "Private and safe", text: "Only your report is used, and we never give a diagnosis." },
 ];
 
-export default function LabLensApp() {
+export default function LabReportApp() {
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [source, setSource] = useState<Source | null>(null);
   const [overrides, setOverrides] = useState<{ age?: number; sex?: Sex }>({});
@@ -502,9 +502,8 @@ export default function LabLensApp() {
       {/* Top navigation */}
       <header className="no-print sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <button type="button" onClick={goHome} aria-label="LabLens home" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white"><IconLogo /></span>
-            <span className="text-lg font-bold tracking-tight text-ink">LabLens</span>
+          <button type="button" onClick={goHome} aria-label="Lab Report Explainer home" className="flex items-center">
+            <Logo />
           </button>
           <nav className="hidden items-center gap-1 rounded-full border border-line bg-panel p-1 text-sm md:flex">
             {data && (

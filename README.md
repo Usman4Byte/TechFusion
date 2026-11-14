@@ -1,8 +1,8 @@
-# LabLens
+# Lab Report Explainer
 
 **Understand your lab report in plain language.**
 
-LabLens reads a patient's lab report, checks every result against the lab's own reference ranges, and explains it in simple words, with questions to ask the doctor. It never diagnoses, never guesses, and only ever uses the report that is open.
+Lab Report Explainer reads a patient's lab report, checks every result against the lab's own reference ranges, and explains it in simple words, with questions to ask the doctor. It never diagnoses, never guesses, and only ever uses the report that is open.
 
 Built for **TechFusion '26 AI Hackathon, Challenge B: Medical Lab Report Explainer**.
 
