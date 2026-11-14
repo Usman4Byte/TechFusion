@@ -154,8 +154,12 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
   const [log, setLog] = useState<{ q: string; a?: ChatAnswer; err?: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => setLog([]), [source]);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), [log]);
+  useEffect(() => {
+    setLog([]);
+  }, [source]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [log]);
 
   const ask = async (question: string) => {
     if (!question.trim() || busy) return;
