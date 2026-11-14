@@ -94,11 +94,12 @@ export function classifyTest(
     return fail(urgent ? "urgent" : "cannot_classify", "cannot be classified from the files: no reference range for this test", { canonical, urgent });
   }
 
+  // Lab safety rule 3: if age or sex is missing, do not guess; ask for the missing details.
   const missing: ("age" | "sex")[] = [];
   if (age === null) missing.push("age");
-  if (sex === null && rows.some((r) => r.sex !== "All")) missing.push("sex");
+  if (sex === null) missing.push("sex");
   if (missing.length) {
-    evidence.push({ label: "Range lookup", detail: `The right range depends on ${missing.join(" and ")}, which is missing. Not guessing.` });
+    evidence.push({ label: "Range lookup", detail: `The patient's ${missing.join(" and ")} ${missing.length > 1 ? "are" : "is"} missing, so the right range cannot be chosen. Not guessing.` });
     return fail(urgent ? "urgent" : "needs_info", `the right normal range cannot be chosen: ${missing.join(" and ")} missing`, { canonical, urgent, missing });
   }
 
@@ -107,8 +108,15 @@ export function classifyTest(
     evidence.push({ label: "Range lookup", detail: `No range for ${canonical} covers a ${age}-year-old ${sex ?? ""}`.trim() });
     return fail(urgent ? "urgent" : "cannot_classify", `cannot be classified from the files: no range for age ${age}`, { canonical, urgent });
   }
-  // Prefer the most specific row (sex-specific over "All").
-  const range = fit.sort((a, b) => (a.sex === "All" ? 1 : 0) - (b.sex === "All" ? 1 : 0))[0];
+  // Prefer the most specific row (sex-specific over "All"). When an age sits on a
+  // boundary shared by two bands, the range sheet says "age boundaries are
+  // inclusive of the upper bound", so the band that ends at that age wins.
+  const range = fit.sort(
+    (a, b) =>
+      (a.sex === "All" ? 1 : 0) - (b.sex === "All" ? 1 : 0) ||
+      (a.ageMax === age ? 0 : 1) - (b.ageMax === age ? 0 : 1) ||
+      a.ageMax - a.ageMin - (b.ageMax - b.ageMin),
+  )[0];
   evidence.push({ label: "Range chosen", detail: rangeLabel(range), source: range.source });
 
   // 4. Qualitative ranges

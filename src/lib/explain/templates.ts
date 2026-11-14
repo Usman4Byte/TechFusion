@@ -32,7 +32,7 @@ export function templateExplanation(r: TestResult): string {
       parts.push("Please see a doctor today.");
       break;
     case "needs_info":
-      parts.push(`Your result is ${shown}. The normal range for ${name} depends on your ${r.missing.join(" and ")}, which is missing from the report. Please tell us your ${r.missing.join(" and ")} so we can choose the right range.`);
+      parts.push(`Your result is ${shown}. The right normal range cannot be chosen because your ${r.missing.join(" and ")} ${r.missing.length > 1 ? "are" : "is"} missing from the report. Please tell us your ${r.missing.join(" and ")} so we can check this result.`);
       break;
     case "cannot_classify":
       parts.push(`Your result is ${shown}. This cannot be classified from the files: ${r.reason.replace(/^cannot be classified from the files:\s*/, "")}. Please ask your doctor about it.`);

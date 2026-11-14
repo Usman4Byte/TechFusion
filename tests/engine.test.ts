@@ -57,9 +57,26 @@ describe("answer key (organizer reports)", () => {
     expect(statuses("P012", { sex: "Female" })).toEqual(["AST:high"]); // 44 > 43
     expect(statuses("P012", { sex: "Male" })).toEqual(["AST:normal"]);
   });
-  it("P003 asks for age; never guesses", () => {
-    expect(analyze(findReport("P003")!, kb).needsInfo).toEqual(["age"]);
-    expect(statuses("P003", { age: 40 })).toEqual(["Fasting Blood Sugar:high"]);
+  it("P003 asks for age and sex; never guesses", () => {
+    expect(analyze(findReport("P003")!, kb).needsInfo).toEqual(["age", "sex"]);
+    expect(statuses("P003", { age: 40 })).toEqual(["Fasting Blood Sugar:needs_info"]);
+    expect(statuses("P003", { age: 40, sex: "Male" })).toEqual(["Fasting Blood Sugar:high"]);
+  });
+  it("age on a shared band boundary uses the band that ends there (upper bound inclusive)", () => {
+    const src = { file: "test", line: 1 };
+    const kb2 = {
+      ...kb,
+      ranges: [
+        ...kb.ranges,
+        { test: "TSH", sex: "All" as const, ageMin: 101, ageMax: 120, low: 1, high: 2, expectedText: null, unit: "mIU/L", source: src },
+        { test: "TSH", sex: "All" as const, ageMin: 120, ageMax: 130, low: 5, high: 6, expectedText: null, unit: "mIU/L", source: src },
+      ],
+    };
+    const at = (age: string) => analyze(parseReport(mk(age, "Male", "TSH: 1.5 mIU/L")), kb2).results[0];
+    expect(at("120").range?.ageMax).toBe(120); // boundary age -> lower band (upper bound inclusive)
+    expect(at("120").status).toBe("normal");
+    expect(at("125").range?.ageMin).toBe(120);
+    expect(at("125").status).toBe("low");
   });
 });
 

@@ -62,6 +62,14 @@ export function findDiagnosis(text: string): string | null {
   return null;
 }
 
+/** Wording the brief requires for some statuses. */
+export function requiredPhrase(r: TestResult): { words: string; test: RegExp } | null {
+  if (r.status === "urgent") return { words: "see a doctor today", test: /see a doctor today/i };
+  if (r.status === "cannot_classify") return { words: "cannot be classified from the files", test: /cannot be classified from the files/i };
+  if (r.status === "needs_info") return { words: "the right normal range cannot be chosen", test: /range cannot be chosen|cannot choose the right (normal )?range/i };
+  return null;
+}
+
 /** The text must not contradict the engine's status. */
 export function contradicts(text: string, r: TestResult): boolean {
   const t = text.toLowerCase();
@@ -122,6 +130,8 @@ export function verifyExplanations(a: Analysis, items: { id: string; text: strin
     const dx = findDiagnosis(it.text);
     if (dx) issues.push({ id: it.id, problem: `sounds like a diagnosis: "${dx}"` });
     if (contradicts(it.text, r)) issues.push({ id: it.id, problem: `contradicts the computed status (${r.status})` });
+    const need = requiredPhrase(r);
+    if (need && !need.test.test(it.text)) issues.push({ id: it.id, problem: `must include the words "${need.words}"` });
     const g = gradeLevel(it.text, ignore);
     if (g > MAX_GRADE) issues.push({ id: it.id, problem: `reading level is grade ${g}; must be ${MAX_GRADE} or below` });
   }
@@ -139,6 +149,7 @@ export function verifyExplanations(a: Analysis, items: { id: string; text: strin
     { name: "Numbers match the computed results", passed: !has(/numbers not in/), detail: "Every number in the text must come from the report or the range sheets." },
     { name: "No diagnosis", passed: !has(/diagnosis/), detail: "Lab safety rule 2: never state that the patient has a disease." },
     { name: "Agrees with the rule engine", passed: !has(/contradicts/), detail: "The text cannot call a high value normal, or the reverse." },
+    { name: "Required wording present", passed: !has(/must include the words/), detail: "Urgent: \"see a doctor today\"; unknown: \"cannot be classified from the files\"; missing info: range cannot be chosen." },
     { name: `Reading level ≤ class ${MAX_GRADE}`, passed: !has(/reading level/), detail: "Flesch-Kincaid grade, with test names and units excluded." },
     { name: "Covers every test, 3–5 questions", passed: !has(/missing explanation|needs 3 to 5|unknown test/), detail: "Each result gets an explanation; questions focus on results that are not normal." },
   ];

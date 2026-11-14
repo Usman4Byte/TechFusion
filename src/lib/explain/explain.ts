@@ -25,8 +25,8 @@ Strict rules:
 - Keep the status exactly as given (normal / low / high / urgent / needs_info / cannot_classify / abnormal).
 - Short sentences. Common words. 2 to 3 sentences per test.
 - For urgent results, include "Please see a doctor today."
-- For needs_info, say the right range cannot be chosen and ask for the missing detail.
-- For cannot_classify, say it "cannot be classified from the files".
+- For needs_info, say "the right normal range cannot be chosen" and ask for the missing detail (age and/or sex).
+- For cannot_classify, say exactly that it "cannot be classified from the files".
 Reply with JSON only: {"explanations":[{"id":"t0","text":"..."}],"questions":["..."]}
 "questions": 3 to 5 short questions the patient can ask the doctor, based on the results that are not normal.`;
 
