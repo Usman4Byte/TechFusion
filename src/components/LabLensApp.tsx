@@ -267,8 +267,21 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
 
   const suggestions = ["Explain my results simply", "Should I be worried?", "What does each test measure?", "What should I ask my doctor?"];
   return (
-    <Card id="ask" title="Ask about your report" icon={<IconChat />} className="no-print">
-      <div ref={listRef} className="max-h-[380px] min-h-[140px] space-y-3 overflow-y-auto pr-1">
+    <section id="ask" className="no-print overflow-hidden rounded-2xl border border-brand/20 bg-panel shadow-frame">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-gradient-to-r from-brand-soft to-panel px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white"><IconChat className="h-5 w-5" /></span>
+          <div>
+            <h2 className="text-lg font-bold">Ask about your report</h2>
+            <p className="text-xs text-muted">Get clear answers about your results, in simple words.</p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-panel px-3 py-1 text-[11px] font-semibold text-ok shadow-sm">
+          <IconLock className="h-3.5 w-3.5" /> Private to this report
+        </span>
+      </div>
+      <div className="px-5 pt-5 pb-5 sm:px-6">
+      <div ref={listRef} className="max-h-[440px] min-h-[180px] space-y-4 overflow-y-auto pr-1">
         {log.length === 0 && (
           <div>
             <div className="flex items-start gap-2">
@@ -277,9 +290,9 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
                 Hi! I can explain any result on this report in simple words. What would you like to know?
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2 pl-9">
+            <div className="mt-4 grid gap-2 pl-9 sm:grid-cols-2">
               {suggestions.map((s) => (
-                <button key={s} onClick={() => ask(s)} className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs font-medium text-ink transition hover:border-brand/40 hover:bg-brand-soft">
+                <button key={s} onClick={() => ask(s)} className="rounded-xl border border-line bg-panel px-4 py-2.5 text-left text-sm font-medium text-ink transition hover:border-brand/40 hover:bg-brand-soft">
                   {s}
                 </button>
               ))}
@@ -311,12 +324,14 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
           ask(q);
         }}
       >
-        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={600} placeholder="Type your question…" className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none" />
-        <button disabled={busy || !q.trim()} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-brand text-white transition hover:opacity-90 disabled:opacity-40">
-          <IconSend />
+        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={600} placeholder="Ask anything about your results…" className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-ink placeholder:text-muted focus:outline-none" />
+        <button disabled={busy || !q.trim()} aria-label="Send" className="inline-flex h-11 items-center gap-2 rounded-full bg-navy px-5 text-sm font-semibold text-white transition hover:bg-ink disabled:opacity-40">
+          Send <IconSend />
         </button>
       </form>
-    </Card>
+      <p className="mt-2 text-center text-[11px] text-muted">Answers explain your numbers only. They are not a diagnosis.</p>
+      </div>
+    </section>
   );
 }
 
@@ -412,7 +427,7 @@ export default function LabLensApp() {
           </a>
           <nav className="hidden items-center gap-1 rounded-full border border-line bg-panel p-1 text-sm md:flex">
             {(data
-              ? [["Results", "#results"], ["Ask", "#ask"], ["Doctor questions", "#questions"]]
+              ? [["Ask", "#ask"], ["Results", "#results"], ["Doctor questions", "#questions"]]
               : [["Home", "#top"], ["How it works", "#how"], ["Privacy", "#privacy"]]
             ).map(([label, href], i) => (
               <a key={label} href={href} className={`rounded-full px-4 py-1.5 font-medium transition ${i === 0 ? "bg-bg text-ink shadow-sm" : "text-muted hover:text-ink"}`}>
@@ -475,8 +490,8 @@ export default function LabLensApp() {
               {data && (
                 <nav className="space-y-0.5 border-t border-line pt-4 text-sm">
                   {[
-                    ["Results", "#results", <IconFlask key="f" />],
                     ["Ask about your report", "#ask", <IconChat key="c" />],
+                    ["Results", "#results", <IconFlask key="f" />],
                     ["Body overview", "#body", <IconBody key="b" />],
                     ["Doctor questions", "#questions", <IconStethoscope key="s" />],
                   ].map(([label, href, icon]) => (
@@ -564,14 +579,6 @@ export default function LabLensApp() {
                     </div>
                   </div>
 
-                  {/* Stat tiles */}
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <StatTile label="Tests on report" value={data.results.length} tone="brand" icon={<IconFlask />} />
-                    <StatTile label="In normal range" value={s!.normal} tone="ok" icon={<IconCheck />} />
-                    <StatTile label="Need attention" value={attention + pending} tone="warn" icon={<IconPulse />} />
-                    <StatTile label="Urgent" value={s!.urgent} tone="bad" icon={<IconAlert />} />
-                  </div>
-
                   {ex?.urgentWarning && (
                     <div role="alert" className="flex items-start gap-3 rounded-2xl border border-bad/30 bg-bad-soft p-5">
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-bad text-white"><IconAlert className="h-5 w-5" /></span>
@@ -584,40 +591,44 @@ export default function LabLensApp() {
 
                   {data.needsInfo.length > 0 && source && <NeedsInfoForm missing={data.needsInfo} onSubmit={(v) => run(source, { ...overrides, ...v })} />}
 
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-                    {/* Right column first on small screens so the chat is near the top */}
-                    <div className="order-first space-y-4 xl:order-last">
-                      <div className="space-y-4 xl:sticky xl:top-20">
-                        {source && <ChatBox source={source} overrides={overrides} />}
-                        <Card id="body" title="Body overview" icon={<IconBody />}>
-                          <BodyMap results={data.results} />
-                        </Card>
-                      </div>
-                    </div>
+                  {/* Main feature: the conversation */}
+                  {source && <ChatBox source={source} overrides={overrides} />}
 
-                    <div className="min-w-0 space-y-4">
-                      <Card id="results" title="Your results" icon={<IconFlask />}>
-                        <ul className="space-y-3">
-                          {data.results.map((r) => (
-                            <ResultRow key={r.id} r={r} text={textFor(r.id)?.text} />
-                          ))}
-                        </ul>
-                        {data.results.length === 0 && <p className="text-muted">No test results were found in this report.</p>}
-                      </Card>
+                  {/* Supporting detail below the chat */}
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <StatTile label="Tests on report" value={data.results.length} tone="brand" icon={<IconFlask />} />
+                    <StatTile label="In normal range" value={s!.normal} tone="ok" icon={<IconCheck />} />
+                    <StatTile label="Need attention" value={attention + pending} tone="warn" icon={<IconPulse />} />
+                    <StatTile label="Urgent" value={s!.urgent} tone="bad" icon={<IconAlert />} />
+                  </div>
 
-                      <Card id="questions" title="Questions to ask your doctor" icon={<IconStethoscope />}>
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <Card id="results" title="Your results" icon={<IconFlask />}>
+                      <ul className="space-y-3">
+                        {data.results.map((r) => (
+                          <ResultRow key={r.id} r={r} text={textFor(r.id)?.text} />
+                        ))}
+                      </ul>
+                      {data.results.length === 0 && <p className="text-muted">No test results were found in this report.</p>}
+                    </Card>
+
+                    <div className="space-y-4">
+                      <Card id="questions" title="Questions for your doctor" icon={<IconStethoscope />}>
                         <ol className="space-y-2.5">
                           {ex?.questions.map((q, i) => (
-                            <li key={i} className="flex gap-3 text-ink">
+                            <li key={i} className="flex gap-3 text-sm text-ink">
                               <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand">{i + 1}</span>
                               <span>{q}</span>
                             </li>
                           ))}
                         </ol>
-                        <p className="mt-4 flex items-start gap-2 border-t border-line pt-4 text-sm text-muted">
+                        <p className="mt-4 flex items-start gap-2 border-t border-line pt-4 text-xs text-muted">
                           <IconInfo className="mt-0.5 h-4 w-4 shrink-0" />
                           {data.safetyNote}
                         </p>
+                      </Card>
+                      <Card id="body" title="Body overview" icon={<IconBody />}>
+                        <BodyMap results={data.results} />
                       </Card>
                     </div>
                   </div>
