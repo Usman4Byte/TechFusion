@@ -7,7 +7,8 @@ import type { Report } from "../types";
 export const ReportInput = z
   .object({
     patientId: z.string().trim().max(40).optional(),
-    reportText: z.string().max(200_000).optional(),
+    reportText: z.string().max(600_000).optional(),
+    fileName: z.string().trim().max(200).optional(),
     age: z.coerce.number().int().min(0).max(130).optional().nullable(),
     sex: z.enum(["Male", "Female"]).optional().nullable(),
     useAI: z.boolean().optional(),
@@ -24,7 +25,8 @@ export class ApiError extends Error {
 
 export function resolveReport(input: ReportInputT): Report {
   if (input.reportText) {
-    const r = parseReport(input.reportText, "uploaded-report");
+    const name = (input.fileName || "uploaded-report").replace(/[^\w.\- ]/g, "_");
+    const r = parseReport(input.reportText, name);
     if (r.tests.length === 0) throw new ApiError(422, "No test results could be found in this report text.");
     return r;
   }

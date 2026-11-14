@@ -20,7 +20,7 @@ interface AnalyzeResponse {
 }
 interface Health { providers: { id: string; label: string; configured: boolean; state: string; model: string }[] }
 
-type Source = { patientId: string } | { reportText: string };
+type Source = { patientId: string } | { reportText: string; fileName?: string };
 
 const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-US") : String(n));
 
@@ -349,7 +349,7 @@ export default function LabLensApp() {
               onPick={(id) => run({ patientId: id })}
               onText={(text, name) => {
                 setUploadedName(name);
-                run({ reportText: text });
+                run({ reportText: text, fileName: name });
               }}
             />
           </Card>

@@ -8,7 +8,7 @@ export interface PatientItem {
   tests: number;
 }
 
-const MAX_BYTES = 500_000;
+const MAX_BYTES = 600_000;
 const ACCEPT = ".md,.txt,.markdown,.csv,.text";
 
 export function ReportPicker({
@@ -51,7 +51,7 @@ export function ReportPicker({
 
   const readFile = async (f: File) => {
     setFileError(null);
-    if (f.size > MAX_BYTES) return setFileError("File is too large (max 500 KB).");
+    if (f.size > MAX_BYTES) return setFileError("File is too large (max 600 KB).");
     if (!/\.(md|markdown|txt|text|csv)$/i.test(f.name) && !f.type.startsWith("text/")) {
       return setFileError("Please upload a text report (.md, .txt or .csv).");
     }
@@ -169,7 +169,7 @@ export function ReportPicker({
         >
           <div className="text-2xl">📄</div>
           <div className="mt-1 font-medium">Drop a report here or click to browse</div>
-          <div className="mt-0.5 text-xs text-muted">.md, .txt or .csv · up to 500 KB</div>
+          <div className="mt-0.5 text-xs text-muted">.md, .txt or .csv · up to 600 KB</div>
           <input
             ref={fileRef}
             type="file"
