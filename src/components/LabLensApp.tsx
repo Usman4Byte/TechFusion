@@ -362,12 +362,51 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
   );
 }
 
-function speak(text: string) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.95;
-  window.speechSynthesis.speak(u);
+/** Read-aloud with a proper stop: tracks whether the browser is speaking. */
+function ListenButton({ text, resetKey }: { text: string; resetKey: unknown }) {
+  const [speaking, setSpeaking] = useState(false);
+  const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const stop = useCallback(() => {
+    if (supported) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [supported]);
+
+  // Stop when another report is opened or the page is left.
+  useEffect(() => stop, [resetKey, stop]);
+
+  const start = () => {
+    if (!supported || !text) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95;
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(u);
+    setSpeaking(true);
+  };
+
+  if (!supported) return null;
+  return speaking ? (
+    <button
+      type="button"
+      onClick={stop}
+      aria-label="Stop reading"
+      className="no-print inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-navy"
+    >
+      <span className="flex h-3 items-end gap-[2px]" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="w-[3px] animate-pulse rounded-full bg-white" style={{ height: `${6 + i * 3}px`, animationDelay: `${i * 150}ms` }} />
+        ))}
+      </span>
+      Stop
+      <span className="h-2.5 w-2.5 rounded-[2px] bg-white" aria-hidden />
+    </button>
+  ) : (
+    <GhostButton onClick={start}>
+      <IconSpeaker /> Listen
+    </GhostButton>
+  );
 }
 
 function StatTile({ label, value, tone, icon }: { label: string; value: number; tone: "brand" | "ok" | "warn" | "bad"; icon: React.ReactNode }) {
@@ -597,9 +636,7 @@ export default function LabLensApp() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <GhostButton onClick={() => speak(ex?.explanations.map((e) => e.text).join(" ") ?? "")}>
-                        <IconSpeaker /> Listen
-                      </GhostButton>
+                      <ListenButton text={ex?.explanations.map((e) => e.text).join(" ") ?? ""} resetKey={data} />
                       <GhostButton onClick={() => window.print()}>
                         <IconPrint /> Print summary
                       </GhostButton>
