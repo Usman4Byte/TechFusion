@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { IconCheck, IconChevron, IconFile, IconPaste, IconSearch, IconUpload } from "./icons";
 
 export interface PatientItem {
   id: string;
@@ -17,12 +18,18 @@ export function ReportPicker({
   uploadedName,
   onPick,
   onText,
+  openKey = 0,
+  uploadKey = 0,
 }: {
   patients: PatientItem[];
   activeId: string | null;
   uploadedName: string | null;
   onPick: (id: string) => void;
   onText: (text: string, name: string) => void;
+  /** Changing this opens the dropdown (used by the hero buttons). */
+  openKey?: number;
+  /** Changing this opens the upload panel. */
+  uploadKey?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -32,6 +39,13 @@ export function ReportPicker({
   const [fileError, setFileError] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (openKey) setOpen(true);
+  }, [openKey]);
+  useEffect(() => {
+    if (uploadKey) setMode("upload");
+  }, [uploadKey]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -51,7 +65,7 @@ export function ReportPicker({
 
   const readFile = async (f: File) => {
     setFileError(null);
-    if (f.size > MAX_BYTES) return setFileError("File is too large (max 600 KB).");
+    if (f.size > MAX_BYTES) return setFileError("This file is too large (max 600 KB).");
     if (!/\.(md|markdown|txt|text|csv)$/i.test(f.name) && !f.type.startsWith("text/")) {
       return setFileError("Please upload a text report (.md, .txt or .csv).");
     }
@@ -61,47 +75,56 @@ export function ReportPicker({
     setMode("none");
   };
 
+  const tab = (m: "upload" | "paste") =>
+    `inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+      mode === m ? "border-brand bg-brand-soft text-brand" : "border-line text-ink hover:border-brand/40"
+    }`;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div ref={boxRef} className="relative">
-        <label className="mb-1.5 block text-xs font-semibold tracking-wide text-muted uppercase">Choose a report</label>
+        <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-muted uppercase">Patient report</label>
         <button
           type="button"
           onClick={() => setOpen(!open)}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-panel px-3 py-2.5 text-left hover:border-brand/60 focus:border-brand focus:outline-none"
+          className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-panel px-3 py-2.5 text-left transition ${open ? "border-brand ring-4 ring-brand/10" : "border-line hover:border-brand/40"}`}
         >
-          <span className="min-w-0 truncate">
+          <span className="flex min-w-0 items-center gap-2.5">
             {active ? (
               <>
-                <span className="font-mono text-xs text-muted">{active.id}</span>
-                <span className="ml-2 font-semibold">{active.initials}</span>
-                <span className="ml-2 text-xs text-muted">{active.tests} test{active.tests === 1 ? "" : "s"}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand">{active.initials}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink">{active.id}</span>
+                  <span className="block text-[11px] text-muted">{active.tests} test{active.tests === 1 ? "" : "s"}</span>
+                </span>
               </>
             ) : uploadedName ? (
-              <span className="font-semibold">📄 {uploadedName}</span>
+              <>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><IconFile className="h-4 w-4" /></span>
+                <span className="truncate text-sm font-semibold text-ink">{uploadedName}</span>
+              </>
             ) : (
-              <span className="text-muted">Select a patient report…</span>
+              <span className="text-sm text-muted">Select a report…</span>
             )}
           </span>
-          <svg className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
-          </svg>
+          <IconChevron className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
 
         {open && (
-          <div className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-line bg-panel shadow-xl">
-            <div className="border-b border-line p-2">
+          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-line bg-panel shadow-frame">
+            <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+              <IconSearch className="h-4 w-4 text-muted" />
               <input
                 autoFocus
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Search ID or initials…"
-                className="w-full rounded-lg border border-line bg-panel px-2.5 py-1.5 text-sm focus:border-brand focus:outline-none"
+                placeholder="Search by ID or initials"
+                className="w-full bg-transparent py-1 text-sm text-ink placeholder:text-muted focus:outline-none"
               />
             </div>
-            <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
+            <ul role="listbox" className="max-h-72 overflow-y-auto p-1">
               {shown.map((p) => (
                 <li key={p.id} role="option" aria-selected={p.id === activeId}>
                   <button
@@ -111,14 +134,14 @@ export function ReportPicker({
                       setOpen(false);
                       setFilter("");
                     }}
-                    className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-gray-soft ${p.id === activeId ? "bg-brand-soft" : ""}`}
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-gray-soft ${p.id === activeId ? "bg-brand-soft" : ""}`}
                   >
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-soft text-xs font-bold">{p.initials}</span>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-soft text-[11px] font-bold text-ink">{p.initials}</span>
                     <span className="flex-1">
-                      <span className="font-mono text-xs text-muted">{p.id}</span>
-                      <span className="block text-xs text-muted">{p.tests} test{p.tests === 1 ? "" : "s"}</span>
+                      <span className="block font-semibold text-ink">{p.id}</span>
+                      <span className="block text-[11px] text-muted">{p.tests} test{p.tests === 1 ? "" : "s"}</span>
                     </span>
-                    {p.id === activeId && <span className="text-brand">✓</span>}
+                    {p.id === activeId && <IconCheck className="h-4 w-4 text-brand" />}
                   </button>
                 </li>
               ))}
@@ -128,27 +151,16 @@ export function ReportPicker({
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-muted">
-        <span className="h-px flex-1 bg-line" />
-        or use your own report
-        <span className="h-px flex-1 bg-line" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => setMode(mode === "upload" ? "none" : "upload")}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium ${mode === "upload" ? "border-brand bg-brand-soft" : "border-line hover:bg-gray-soft"}`}
-        >
-          ⬆ Upload
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode(mode === "paste" ? "none" : "paste")}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium ${mode === "paste" ? "border-brand bg-brand-soft" : "border-line hover:bg-gray-soft"}`}
-        >
-          📋 Paste
-        </button>
+      <div>
+        <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-muted uppercase">Your own report</div>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setMode(mode === "upload" ? "none" : "upload")} className={tab("upload")}>
+            <IconUpload /> Upload
+          </button>
+          <button type="button" onClick={() => setMode(mode === "paste" ? "none" : "paste")} className={tab("paste")}>
+            <IconPaste /> Paste
+          </button>
+        </div>
       </div>
 
       {mode === "upload" && (
@@ -165,11 +177,11 @@ export function ReportPicker({
             if (f) readFile(f);
           }}
           onClick={() => fileRef.current?.click()}
-          className={`cursor-pointer rounded-xl border-2 border-dashed p-4 text-center text-sm transition ${dragging ? "border-brand bg-brand-soft" : "border-line hover:bg-gray-soft"}`}
+          className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center text-sm transition ${dragging ? "border-brand bg-brand-soft" : "border-line hover:border-brand/40 hover:bg-gray-soft"}`}
         >
-          <div className="text-2xl">📄</div>
-          <div className="mt-1 font-medium">Drop a report here or click to browse</div>
-          <div className="mt-0.5 text-xs text-muted">.md, .txt or .csv · up to 600 KB</div>
+          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-brand-soft text-brand"><IconUpload className="h-5 w-5" /></span>
+          <div className="mt-2 font-semibold text-ink">Drop your report here</div>
+          <div className="mt-0.5 text-xs text-muted">or click to browse · .md, .txt, .csv</div>
           <input
             ref={fileRef}
             type="file"
@@ -190,9 +202,9 @@ export function ReportPicker({
           <textarea
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
-            rows={8}
+            rows={7}
             placeholder={"Patient Full Name: …\nRecorded Age: 40\nBiological Sex: Female\n\nHemoglobin: 11.2 g/dL\nSGPT: 60 U/L"}
-            className="w-full rounded-lg border border-line bg-panel p-2 font-mono text-xs focus:border-brand focus:outline-none"
+            className="w-full rounded-xl border border-line bg-panel p-3 font-mono text-xs text-ink focus:border-brand focus:ring-4 focus:ring-brand/10 focus:outline-none"
           />
           <button
             disabled={!pasted.trim()}
@@ -200,7 +212,7 @@ export function ReportPicker({
               onText(pasted, "Pasted report");
               setMode("none");
             }}
-            className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="w-full rounded-full bg-navy px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-ink disabled:opacity-40"
           >
             Explain this report
           </button>

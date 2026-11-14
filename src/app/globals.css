@@ -1,53 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #f6f7fb;
   --panel: #ffffff;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --line: #e2e8f0;
-  --brand: #0e7490;
-  --brand-soft: #ecfeff;
-  --ok: #15803d;
-  --ok-soft: #dcfce7;
-  --warn: #b45309;
-  --warn-soft: #fef3c7;
-  --bad: #b91c1c;
-  --bad-soft: #fee2e2;
-  --info: #4338ca;
-  --info-soft: #e0e7ff;
-  --gray-soft: #f1f5f9;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1120;
-    --panel: #111827;
-    --ink: #e5e7eb;
-    --muted: #94a3b8;
-    --line: #1f2937;
-    --brand: #22d3ee;
-    --brand-soft: #083344;
-    --ok: #4ade80;
-    --ok-soft: #052e16;
-    --warn: #fbbf24;
-    --warn-soft: #422006;
-    --bad: #f87171;
-    --bad-soft: #450a0a;
-    --info: #a5b4fc;
-    --info-soft: #1e1b4b;
-    --gray-soft: #1e293b;
-  }
+  --ink: #0d1b4c;
+  --body: #3b4565;
+  --muted: #6b7591;
+  --line: #e6e9f2;
+  --brand: #3d5afe;
+  --brand-soft: #eef1ff;
+  --navy: #0b1437;
+  --ok: #138a4b;
+  --ok-soft: #e8f7ee;
+  --warn: #c56a00;
+  --warn-soft: #fff3e2;
+  --bad: #d92d3a;
+  --bad-soft: #fdecee;
+  --info: #5b45e0;
+  --info-soft: #f0edff;
+  --gray-soft: #f2f4f9;
+  color-scheme: light;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
   --color-ink: var(--ink);
+  --color-body: var(--body);
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-navy: var(--navy);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
@@ -57,18 +41,65 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-gray-soft: var(--gray-soft);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--bg);
+  color: var(--body);
+  font-feature-settings: "ss01", "cv11";
+}
+
+h1, h2, h3 {
   color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.shadow-soft {
+  box-shadow: 0 1px 2px rgba(13, 27, 76, 0.04), 0 8px 24px -12px rgba(13, 27, 76, 0.12);
+}
+.shadow-frame {
+  box-shadow: 0 2px 4px rgba(13, 27, 76, 0.04), 0 30px 60px -30px rgba(13, 27, 76, 0.25);
+}
+
+/* Soft colour glow behind the hero (red left, blue right). */
+.hero-glow {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1400px;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+.hero-glow::before,
+.hero-glow::after {
+  content: "";
+  position: absolute;
+  width: 46vw;
+  height: 46vw;
+  max-width: 620px;
+  max-height: 620px;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.35;
+}
+.hero-glow::before {
+  left: -14vw;
+  top: 38%;
+  background: radial-gradient(circle, #ff4d4f 0%, #ff8a80 45%, transparent 70%);
+}
+.hero-glow::after {
+  right: -14vw;
+  top: 30%;
+  background: radial-gradient(circle, #3b82f6 0%, #60c5ff 45%, transparent 70%);
 }
 
 @media print {
   .no-print { display: none !important; }
-  body { background: #fff; color: #000; }
+  body { background: #fff; }
   .print-only { display: block !important; }
+  .print-plain { box-shadow: none !important; border: none !important; }
 }
 .print-only { display: none; }
