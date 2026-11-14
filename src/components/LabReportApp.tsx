@@ -228,7 +228,7 @@ function BotMessage({ a, animate, onDone }: { a: ChatAnswer; animate: boolean; o
   return (
     <div className="flex items-start gap-2">
       <Avatar />
-      <div className={`max-w-[88%] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-sm leading-relaxed ${refused ? "bg-bad-soft text-ink" : "bg-gray-soft text-ink"}`}>
+      <div className={`max-w-[calc(100%-2.5rem)] rounded-2xl rounded-tl-md px-3.5 sm:max-w-[88%] py-2.5 text-sm leading-relaxed ${refused ? "bg-bad-soft text-ink" : "bg-gray-soft text-ink"}`}>
         <p className="whitespace-pre-line">{shown}</p>
         {shown.length >= a.answer.length && (
           <div className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold ${refused ? "text-bad" : "text-ok"}`}>
@@ -286,7 +286,7 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
   const suggestions = ["Explain my results simply", "Should I be worried?", "What does each test measure?", "What should I ask my doctor?"];
   return (
     <section id="ask" className="no-print overflow-hidden rounded-2xl border border-brand/20 bg-panel shadow-frame">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-gradient-to-r from-brand-soft to-panel px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-gradient-to-r from-brand-soft to-panel px-4 py-3.5 sm:px-6 sm:py-4">
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white"><IconChat className="h-5 w-5" /></span>
           <div>
@@ -298,7 +298,7 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
           <IconLock className="h-3.5 w-3.5" /> Private to this report
         </span>
       </div>
-      <div className="px-5 pt-5 pb-5 sm:px-6">
+      <div className="px-3 pt-4 pb-4 sm:px-6 sm:pt-5 sm:pb-5">
       <div ref={listRef} className="max-h-[440px] min-h-[180px] space-y-4 overflow-y-auto pr-1">
         {log.length === 0 && (
           <div>
@@ -308,14 +308,14 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
                 Hi! I can explain any result on this report in simple words. What would you like to know?
               </div>
             </div>
-            <div className="mt-4 pl-9">
+            <div className="mt-4 sm:pl-9">
               <div className="mb-2 text-[11px] font-semibold tracking-wider text-muted uppercase">Try one of these</div>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => ask(s)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3.5 py-1.5 text-sm font-medium text-brand transition hover:bg-brand hover:text-white"
+                    className="inline-flex w-full items-center justify-between gap-1.5 rounded-full bg-brand-soft px-4 py-2 text-left text-sm font-medium text-brand transition hover:bg-brand hover:text-white sm:w-auto sm:justify-start sm:py-1.5"
                   >
                     {s}
                     <IconArrowRight className="h-3.5 w-3.5" />
@@ -346,13 +346,13 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
       </div>
 
       {/* Composer: its own shaded area so it's obvious where to type */}
-      <div className="border-t border-line bg-gray-soft px-5 py-4 sm:px-6">
+      <div className="border-t border-line bg-gray-soft px-3 py-3 sm:px-6 sm:py-4">
         <label htmlFor="chat-input" className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">
           <IconChat className="h-3.5 w-3.5 text-brand" />
           Type your question
         </label>
         <form
-          className="flex items-center gap-2 rounded-2xl border-2 border-brand/30 bg-panel p-1.5 pl-4 shadow-soft transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15"
+          className="flex items-center gap-2 rounded-2xl border-2 border-brand/30 bg-panel p-1.5 pl-3 shadow-soft sm:pl-4 transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15"
           onSubmit={(e) => {
             e.preventDefault();
             ask(q);
@@ -363,15 +363,15 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
             value={q}
             onChange={(e) => setQ(e.target.value)}
             maxLength={600}
-            placeholder="e.g. What does my hemoglobin result mean?"
+            placeholder="Ask about your results…"
             className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-ink placeholder:text-muted/80 focus:outline-none"
           />
           <button
             disabled={busy || !q.trim()}
             aria-label="Send"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-brand px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
           >
-            {busy ? "Sending…" : "Send"} <IconSend />
+            <span className="hidden sm:inline">{busy ? "Sending…" : "Send"}</span> <IconSend />
           </button>
         </form>
         <p className="mt-2 text-[11px] text-muted">Press Enter to send. Answers explain your numbers only; they are not a diagnosis.</p>
@@ -521,6 +521,16 @@ export default function LabReportApp() {
           <div className="hero-glow" />
         </div>
       )}
+      {/* Team strip */}
+      <div className="no-print relative z-50 bg-navy text-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-2 gap-y-0.5 px-4 py-1.5 text-center text-[11px] sm:text-xs">
+          <span className="font-semibold">Team TechDuo</span>
+          <span className="text-white/40" aria-hidden>·</span>
+          <span className="text-white/80">Muhammad Usman &amp; Hamza Qasim</span>
+          <span className="hidden text-white/40 sm:inline" aria-hidden>·</span>
+          <span className="hidden text-white/60 sm:inline">TechFusion &apos;26 AI Hackathon</span>
+        </div>
+      </div>
       {/* Top navigation */}
       <header className="no-print sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -577,8 +587,8 @@ export default function LabReportApp() {
       )}
 
       {/* App frame */}
-      <div ref={appRef} className="relative mx-auto max-w-7xl scroll-mt-20 px-4 pb-16 sm:px-6">
-        <div className={`rounded-[28px] border border-line bg-panel/70 p-2 shadow-frame backdrop-blur sm:p-3 ${data ? "mt-6" : ""}`}>
+      <div ref={appRef} className="relative mx-auto max-w-7xl scroll-mt-20 px-2.5 pb-16 sm:px-6">
+        <div className={`rounded-[22px] border border-line bg-panel/70 p-1.5 shadow-frame backdrop-blur sm:rounded-[28px] sm:p-3 ${data ? "mt-6" : ""}`}>
           <div className="grid gap-3 lg:grid-cols-[272px_1fr]">
             {/* Sidebar */}
             <aside className="no-print flex flex-col gap-4 rounded-[20px] border border-line bg-panel p-4">
@@ -751,6 +761,31 @@ export default function LabReportApp() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="no-print border-t border-line bg-panel">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-3 md:items-start">
+          <div className="space-y-2">
+            <Logo compact />
+            <p className="max-w-xs text-xs text-muted">Explains lab results in plain language. It does not give a diagnosis. Always talk to your doctor.</p>
+          </div>
+          <div className="space-y-1 text-sm">
+            <div className="text-[11px] font-semibold tracking-wider text-muted uppercase">Team</div>
+            <div className="font-semibold text-ink">TechDuo</div>
+            <div className="text-body">Muhammad Usman &amp; Hamza Qasim</div>
+          </div>
+          <div className="space-y-1 text-sm md:text-right">
+            <div className="text-[11px] font-semibold tracking-wider text-muted uppercase">Event</div>
+            <div className="font-semibold text-ink">TechFusion &apos;26 AI Hackathon</div>
+            <div className="text-body">Challenge B · Medical Lab Report Explainer</div>
+          </div>
+        </div>
+        <div className="border-t border-line">
+          <p className="mx-auto max-w-7xl px-4 py-3 text-center text-xs text-muted sm:px-6">
+            © 2026 Team TechDuo · Muhammad Usman &amp; Hamza Qasim
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

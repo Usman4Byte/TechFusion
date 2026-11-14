@@ -8,6 +8,7 @@ Built for **TechFusion '26 AI Hackathon, Challenge B: Medical Lab Report Explain
 
 | | |
 |---|---|
+| Team | **TechDuo**: Muhammad Usman & Hamza Qasim |
 | Live app | [techfusion-techduo.vercel.app](https://techfusion-techduo.vercel.app/) |
 | Demo video | [Watch the demo](https://drive.google.com/file/d/1BApiej29YqwtqjS9BVl8E6ZuW8B8ycZ1/view) |
 
