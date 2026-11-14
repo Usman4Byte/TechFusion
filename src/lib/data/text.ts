@@ -29,6 +29,11 @@ export function cleanLines(content: string): Line[] {
   return out;
 }
 
+/** A patient report has a patient-name field outside the boilerplate. */
+export function isPatientReport(content: string): boolean {
+  return cleanLines(content).some((l) => /patient (full )?name\**\s*:/i.test(l.text));
+}
+
 /** "Platelet Count (PLT)" -> "plateletcountplt" style key without brackets content. */
 export function normKey(s: string): string {
   return s

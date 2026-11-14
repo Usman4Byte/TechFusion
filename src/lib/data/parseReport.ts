@@ -107,7 +107,8 @@ export function parseReport(content: string, file = "pasted-report"): Report {
   const idFromFile = file.match(/P\d{2,}/i)?.[0]?.toUpperCase();
 
   // Results: lines after a "results" heading, else every non-demographic line.
-  const resIdx = lines.findIndex((l) => /^#{1,6}.*(result|analytical|findings)/i.test(l.text));
+  let resIdx = lines.findIndex((l) => /^#{2,6}.*(results?|findings)\b/i.test(l.text));
+  if (resIdx < 0) resIdx = lines.findIndex((l) => /^#{2,6}.*analytical/i.test(l.text));
   let resultLines = resIdx >= 0 ? lines.slice(resIdx + 1) : lines;
   const nextHead = resultLines.findIndex((l) => /^#{1,6}\s/.test(l.text));
   if (resIdx >= 0 && nextHead >= 0) resultLines = resultLines.slice(0, nextHead);
