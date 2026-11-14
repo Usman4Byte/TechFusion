@@ -290,12 +290,20 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
                 Hi! I can explain any result on this report in simple words. What would you like to know?
               </div>
             </div>
-            <div className="mt-4 grid gap-2 pl-9 sm:grid-cols-2">
-              {suggestions.map((s) => (
-                <button key={s} onClick={() => ask(s)} className="rounded-xl border border-line bg-panel px-4 py-2.5 text-left text-sm font-medium text-ink transition hover:border-brand/40 hover:bg-brand-soft">
-                  {s}
-                </button>
-              ))}
+            <div className="mt-4 pl-9">
+              <div className="mb-2 text-[11px] font-semibold tracking-wider text-muted uppercase">Try one of these</div>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => ask(s)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3.5 py-1.5 text-sm font-medium text-brand transition hover:bg-brand hover:text-white"
+                  >
+                    {s}
+                    <IconArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -317,19 +325,38 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
           </div>
         ))}
       </div>
-      <form
-        className="mt-4 flex items-center gap-2 rounded-full border border-line bg-panel py-1 pr-1 pl-4 transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10"
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(q);
-        }}
-      >
-        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={600} placeholder="Ask anything about your results…" className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-ink placeholder:text-muted focus:outline-none" />
-        <button disabled={busy || !q.trim()} aria-label="Send" className="inline-flex h-11 items-center gap-2 rounded-full bg-navy px-5 text-sm font-semibold text-white transition hover:bg-ink disabled:opacity-40">
-          Send <IconSend />
-        </button>
-      </form>
-      <p className="mt-2 text-center text-[11px] text-muted">Answers explain your numbers only. They are not a diagnosis.</p>
+      </div>
+
+      {/* Composer: its own shaded area so it's obvious where to type */}
+      <div className="border-t border-line bg-gray-soft px-5 py-4 sm:px-6">
+        <label htmlFor="chat-input" className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">
+          <IconChat className="h-3.5 w-3.5 text-brand" />
+          Type your question
+        </label>
+        <form
+          className="flex items-center gap-2 rounded-2xl border-2 border-brand/30 bg-panel p-1.5 pl-4 shadow-soft transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15"
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask(q);
+          }}
+        >
+          <input
+            id="chat-input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            maxLength={600}
+            placeholder="e.g. What does my hemoglobin result mean?"
+            className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-ink placeholder:text-muted/80 focus:outline-none"
+          />
+          <button
+            disabled={busy || !q.trim()}
+            aria-label="Send"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? "Sending…" : "Send"} <IconSend />
+          </button>
+        </form>
+        <p className="mt-2 text-[11px] text-muted">Press Enter to send. Answers explain your numbers only; they are not a diagnosis.</p>
       </div>
     </section>
   );
