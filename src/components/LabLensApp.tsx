@@ -6,9 +6,9 @@ import type { Demographic, Sex, Status, TestResult } from "@/lib/types";
 import type { ExplainResult } from "@/lib/explain/explain";
 import type { ChatAnswer } from "@/lib/chat/chat";
 import { BodyMap } from "./BodyMap";
+import { ReportPicker, type PatientItem } from "./ReportPicker";
 import { Card, RangeGauge, StatusChip, STATUS_STYLE } from "./ui";
 
-interface PatientItem { id: string; initials: string; tests: number }
 interface AnalyzeResponse {
   patient: { id: string; name: string | null; mrn: string | null; issued: string | null; age: Demographic<number>; sex: Demographic<Sex> };
   needsInfo: ("age" | "sex")[];
@@ -296,8 +296,7 @@ export default function LabLensApp() {
   const [data, setData] = useState<AnalyzeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pasteOpen, setPasteOpen] = useState(false);
-  const [pasted, setPasted] = useState("");
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/patients").then((r) => r.json()).then(setPatients).catch(() => setError("Could not load the patient list."));
@@ -340,30 +339,19 @@ export default function LabLensApp() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[220px_1fr]">
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[280px_1fr]">
         <aside className="no-print space-y-3">
-          <Card title="Reports">
-            <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
-              {patients.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => run({ patientId: p.id })}
-                  className={`rounded-lg border px-2 py-2 text-left text-sm transition ${activeId === p.id ? "border-brand bg-brand-soft" : "border-line hover:bg-gray-soft"}`}
-                >
-                  <div className="font-mono text-xs text-muted">{p.id}</div>
-                  <div className="font-semibold">{p.initials}</div>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setPasteOpen(!pasteOpen)} className="mt-3 w-full rounded-lg border border-dashed border-line px-3 py-2 text-sm hover:bg-gray-soft">
-              {pasteOpen ? "Close" : "+ Paste a new report"}
-            </button>
-            {pasteOpen && (
-              <div className="mt-2 space-y-2">
-                <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={8} placeholder={"Patient Full Name: …\nRecorded Age: 40\nBiological Sex: Female\n\nHemoglobin: 11.2 g/dL\nSGPT: 60 U/L"} className="w-full rounded-lg border border-line bg-panel p-2 font-mono text-xs" />
-                <button disabled={!pasted.trim()} onClick={() => run({ reportText: pasted })} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Explain this report</button>
-              </div>
-            )}
+          <Card>
+            <ReportPicker
+              patients={patients}
+              activeId={activeId}
+              uploadedName={activeId ? null : uploadedName}
+              onPick={(id) => run({ patientId: id })}
+              onText={(text, name) => {
+                setUploadedName(name);
+                run({ reportText: text });
+              }}
+            />
           </Card>
           <p className="px-1 text-xs text-muted">Only the open report is ever shown or sent to the AI. Other patients stay locked.</p>
         </aside>
