@@ -15,27 +15,27 @@ export function templateExplanation(r: TestResult): string {
 
   switch (r.status) {
     case "normal":
-      parts.push(`Your result is ${shown}. The normal range is ${range}, so this result is in the normal range.`);
+      parts.push(`Your ${name} result is ${shown}. The normal range is ${range}, so this result is in the normal range.`);
       break;
     case "low":
     case "high":
-      parts.push(`Your result is ${shown}. The normal range is ${range}, so this result is ${r.status === "low" ? "below" : "above"} the normal range.`);
+      parts.push(`Your ${name} result is ${shown}. The normal range is ${range}, so this result is ${r.status === "low" ? "below" : "above"} the normal range.`);
       if (info) parts.push(r.status === "low" ? info.low : info.high);
       break;
     case "abnormal":
-      parts.push(`Your result is "${r.textValue}". The expected result is "${range}", so this result is not the usual one.`);
+      parts.push(`Your ${name} result is "${r.textValue}". The expected result is "${range}", so this result is not the usual one.`);
       if (info?.high) parts.push(info.high);
       break;
     case "urgent":
-      parts.push(`Your result is ${shown}. This is at a level the lab marks as urgent.`);
+      parts.push(`Your ${name} result is ${shown}. This is at a level the lab marks as urgent.`);
       if (info && r.rangeStatus) parts.push(r.rangeStatus === "low" ? info.low : info.high);
       parts.push("Please see a doctor today.");
       break;
     case "needs_info":
-      parts.push(`Your result is ${shown}. The right normal range cannot be chosen because your ${r.missing.join(" and ")} ${r.missing.length > 1 ? "are" : "is"} missing from the report. Please tell us your ${r.missing.join(" and ")} so we can check this result.`);
+      parts.push(`Your ${name} result is ${shown}. The right normal range cannot be chosen because your ${r.missing.join(" and ")} ${r.missing.length > 1 ? "are" : "is"} missing from the report. Please tell us your ${r.missing.join(" and ")} so we can check this result.`);
       break;
     case "cannot_classify":
-      parts.push(`Your result is ${shown}. This cannot be classified from the files: ${r.reason.replace(/^cannot be classified from the files:\s*/, "")}. Please ask your doctor about it.`);
+      parts.push(`Your ${name} result is ${shown}. This cannot be classified from the files: ${r.reason.replace(/^cannot be classified from the files:\s*/, "")}. Please ask your doctor about it.`);
       break;
   }
   return parts.filter(Boolean).join(" ");

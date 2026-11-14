@@ -133,7 +133,10 @@ function ResultRow({ r, text }: { r: TestResult; text?: string }) {
 function NeedsInfoForm({ missing, onSubmit }: { missing: ("age" | "sex")[]; onSubmit: (v: { age?: number; sex?: Sex }) => void }) {
   const [age, setAge] = useState("");
   const [sex, setSex] = useState<"" | Sex>("");
-  const ready = (!missing.includes("age") || /^\d{1,3}$/.test(age)) && (!missing.includes("sex") || sex);
+  const ageNum = Number(age);
+  const ageValid = /^\d{1,3}$/.test(age.trim()) && ageNum >= 1 && ageNum <= 120;
+  const ageError = missing.includes("age") && age.trim() !== "" && !ageValid ? "Please enter an age between 1 and 120." : null;
+  const ready = (!missing.includes("age") || ageValid) && (!missing.includes("sex") || sex);
   const field = "mt-1 block rounded-xl border border-line bg-panel px-3 py-2 text-sm text-ink focus:border-brand focus:ring-4 focus:ring-brand/10 focus:outline-none";
   return (
     <div className="rounded-2xl border border-info/25 bg-info-soft p-5">
@@ -148,13 +151,20 @@ function NeedsInfoForm({ missing, onSubmit }: { missing: ("age" | "sex")[]; onSu
             className="mt-3 flex flex-wrap items-end gap-3"
             onSubmit={(e) => {
               e.preventDefault();
-              if (ready) onSubmit({ age: missing.includes("age") ? Number(age) : undefined, sex: missing.includes("sex") ? (sex as Sex) : undefined });
+              if (ready) onSubmit({ age: missing.includes("age") ? ageNum : undefined, sex: missing.includes("sex") ? (sex as Sex) : undefined });
             }}
           >
             {missing.includes("age") && (
               <label className="text-xs font-medium text-muted">
                 Age
-                <input value={age} onChange={(e) => setAge(e.target.value)} inputMode="numeric" className={`${field} w-24`} placeholder="e.g. 45" />
+                <input
+                  value={age}
+                  onChange={(e) => setAge(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                  inputMode="numeric"
+                  aria-invalid={!!ageError}
+                  className={`${field} w-24 ${ageError ? "border-bad" : ""}`}
+                  placeholder="e.g. 45"
+                />
               </label>
             )}
             {missing.includes("sex") && (
@@ -171,6 +181,7 @@ function NeedsInfoForm({ missing, onSubmit }: { missing: ("age" | "sex")[]; onSu
               Update results
             </button>
           </form>
+          {ageError && <p className="mt-2 text-xs font-medium text-bad">{ageError}</p>}
         </div>
       </div>
     </div>
@@ -235,8 +246,11 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
   const [log, setLog] = useState<{ q: string; a?: ChatAnswer; err?: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const session = useRef(0);
   useEffect(() => {
+    session.current++;
     setLog([]);
+    setBusy(false);
   }, [source]);
   const toBottom = () => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   useEffect(() => {
@@ -245,6 +259,7 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
 
   const ask = async (question: string) => {
     if (!question.trim() || busy) return;
+    const mine = session.current;
     setBusy(true);
     setQ("");
     setLog((l) => [...l, { q: question }]);
@@ -257,11 +272,14 @@ function ChatBox({ source, overrides }: { source: Source; overrides: { age?: num
           { role: "assistant" as const, content: m.a!.answer },
         ]);
       const a = await postJson<ChatAnswer>("/api/chat", { ...source, ...overrides, question, history });
+      if (mine !== session.current) return;
       setLog((l) => l.map((x, i) => (i === l.length - 1 ? { ...x, a } : x)));
     } catch (e) {
-      setLog((l) => l.map((x, i) => (i === l.length - 1 ? { ...x, err: (e as Error).message } : x)));
+      if (mine !== session.current) return;
+      const msg = (e as Error).message;
+      setLog((l) => l.map((x, i) => (i === l.length - 1 ? { ...x, err: /fetch|network/i.test(msg) ? "Connection problem. Please check your internet and try again." : msg } : x)));
     } finally {
-      setBusy(false);
+      if (mine === session.current) setBusy(false);
     }
   };
 
@@ -449,18 +467,22 @@ export default function LabReportApp() {
     fetch("/api/patients").then((r) => r.json()).then(setPatients).catch(() => setError("Could not load the report list."));
   }, []);
 
+  const requestId = useRef(0);
   const run = useCallback(async (src: Source, ov: { age?: number; sex?: Sex } = {}) => {
+    const id = ++requestId.current;
     setSource(src);
     setOverrides(ov);
     setLoading(true);
     setError(null);
     try {
-      setData(await postJson<AnalyzeResponse>("/api/analyze", { ...src, ...ov }));
+      const res = await postJson<AnalyzeResponse>("/api/analyze", { ...src, ...ov });
+      if (id === requestId.current) setData(res);
     } catch (e) {
+      if (id !== requestId.current) return;
       setData(null);
-      setError((e as Error).message);
+      setError((e as Error).message || "Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, []);
 

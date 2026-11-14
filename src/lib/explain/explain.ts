@@ -139,7 +139,14 @@ export async function explain(a: Analysis, opts: { useAI?: boolean } = {}): Prom
     return { id: r.id, text, source: "template", grade: gradeLevel(text, ignore) };
   });
   const qBad = [...badIds].some((id) => id?.startsWith("q")) || (verification?.issues ?? []).some((i) => /questions/.test(i.problem));
-  const questions = qBad ? templateQuestions(a) : best.questions.slice(0, 5);
+  // Always give 3 to 5 questions: top up from the safe template list if the AI gave too few.
+  const aiQs = qBad ? [] : best.questions.map((q) => q.trim()).filter(Boolean);
+  const questions = [...aiQs];
+  for (const q of templateQuestions(a)) {
+    if (questions.length >= 3) break;
+    if (!questions.some((x) => x.toLowerCase() === q.toLowerCase())) questions.push(q);
+  }
+  questions.splice(5);
   const finalCheck = verifyExplanations(a, explanations, questions);
   const replaced = explanations.filter((e) => e.source === "template").length;
   if (replaced) notes.push(`${replaced} item(s) replaced by the safe template after verification`);

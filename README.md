@@ -156,7 +156,7 @@ All input is validated. Errors return a clear JSON message with the matching sta
 npm test
 ```
 
-- **88 automated tests**: every organizer report, boundary values, age limits, aliases, unit conversions, privacy, the verifier and upload parity.
+- **89 automated tests**: every organizer report, boundary values, age limits, aliases, unit conversions, privacy, the verifier and upload parity.
 - **Live self-test page** at `/tests`: runs 40 tricky cases against the real engine in the browser.
 
 **Expected results for the organizer reports:**
@@ -165,7 +165,7 @@ npm test
 |---|---|
 | P001 | Hemoglobin normal · WBC normal |
 | P002 | SGPT (ALT) 45 → normal: exactly on the female limit |
-| P003 | Needs info: age and sex missing |
+| P003 | Needs info: asks for age and sex |
 | P004 | Hemoglobin 6.5 → **urgent** · Platelets low |
 | P005 | 6.0 mmol/L → 108 mg/dL → high |
 | P006 | Serum Ferritin → not classified (no range) |
@@ -186,7 +186,9 @@ npm test
 2. **Edge rule applies to every test.** It's stated in the hematology sheet, and the organizer example (cholesterol exactly 200) shows it applies everywhere.
 3. **Only exact unit conversions.** The files give no conversion factors, so only mathematically exact ones are used: glucose ×18, cholesterol ×38.67, g/L→g/dL, ×10⁹/L→cells/mcL, µIU/mL = mIU/L. Anything else is not classified.
 4. **Two extra labels.** "pH Level" and "Protein" in urine reports map to Urine pH and Urine Protein.
-5. **Test descriptions.** The lab files contain only names and ranges, so short general descriptions of what each test measures are included. They never name a disease.
+5. **Missing age or sex always asks.** Following lab safety rule 3, if either is missing the app says the right normal range cannot be chosen and asks for it, even for tests whose range is the same for all sexes. Urgent limits still apply, because they don't depend on age or sex.
+6. **Age bands include their upper limit.** If two bands meet (e.g. 18–40 and 40–60), a 40-year-old uses 18–40, as the range sheet says.
+7. **Test descriptions.** The lab files contain only names and ranges, so short general descriptions of what each test measures are included. They never name a disease.
 
 ---
 
