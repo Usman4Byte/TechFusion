@@ -42,7 +42,7 @@ The CityLab files are about 95% boilerplate (HIPAA, CLIA, QA appendices). The re
 | **Urgent warnings** | Red banner + "Please see a doctor today". Urgent still fires when age or sex is missing |
 | **Privacy lock** | Questions naming another patient (name, ID, MRN, "all patients") are refused **in code, before any AI call** (safety rule 1) |
 | **Verified AI text** | Rejects invented numbers, diagnosis wording, contradictions with the engine and text above class 8 reading level |
-| **Reliability** | Groq → Groq-fast → Gemini → OpenRouter fallback, 429 cool-down with `retry-after`, exponential backoff, timeouts, response cache, and a fully working **no-AI template mode** |
+| **Reliability** | **Round-robin across fast free-tier models** (Gemini 3.5 Flash Lite → 3.1 Flash Lite → 3 Flash → …) to spread load over each model's quota; on failure the next model is tried, then Groq / OpenRouter if keys exist. 429 cool-down with `retry-after`, backoff, timeouts, response cache, and a fully working **no-AI template mode** |
 | **Body map** | Organs coloured by their worst result |
 | **Doctor questions** | 3–5 questions based on the results that are not normal, plus a printable doctor visit sheet |
 | **Paste any report** | Works on new reports in any of the corpus formats (bullets, tables, `Test:/Result:` pairs, `->` arrows) |

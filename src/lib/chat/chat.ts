@@ -22,6 +22,7 @@ Rules:
 - Never say the patient has a disease. Never diagnose. You may say what a value "can mean".
 - Never invent numbers. Never talk about other patients.
 - If a result needs missing age or sex, say the right range cannot be chosen and ask for it.
+- If asked "do I have <disease>?", say you cannot diagnose, then explain what their related results show and suggest asking the doctor.
 - 2 to 5 short sentences. Mention which test(s) you used.`;
 
 function mentionedResults(q: string, a: Analysis) {
@@ -77,7 +78,7 @@ export async function answerQuestion(question: string, report: Report, analysis:
           { role: "system", content: SYSTEM },
           { role: "user", content: `Facts:\n${JSON.stringify(facts)}\n\nQuestion: ${q}` },
         ],
-        { maxTokens: 500 },
+        { maxTokens: 1500 },
       );
       answer = res.text;
       provider = res.provider;

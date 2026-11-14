@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 
 /**
  * Multi-provider LLM router. Every provider here speaks the OpenAI chat API,
- * so one client works for all. Order: Groq -> Gemini -> OpenRouter (free).
+ * so one client works for all. Requests rotate across a pool of free-tier
+ * models (round-robin), with Groq-fast / OpenRouter as last-resort backups.
  * Handles rate limits (429) with a per-provider cool-down, retries transient
  * errors with exponential backoff, times out slow calls and caches answers.
  */
@@ -14,6 +15,10 @@ export interface Provider {
   model: string;
   apiKey: string | undefined;
   jsonMode: boolean;
+  /** Extra request fields (e.g. lower "thinking" for faster answers). */
+  extra?: Record<string, unknown>;
+  /** Primary pool members are used in round-robin; others are last-resort backups. */
+  pool: boolean;
 }
 
 export interface ProviderStatus {
@@ -25,6 +30,7 @@ export interface ProviderStatus {
   lastError?: string;
   cooldownUntil?: number;
   lastLatencyMs?: number;
+  calls?: number;
 }
 
 export interface LLMResult {
@@ -41,23 +47,68 @@ export class AllProvidersFailed extends Error {
   }
 }
 
+const GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/";
+const GROQ = "https://api.groq.com/openai/v1";
+
+/**
+ * Gemini models. Only quick models are used (measured ~1-5 s): Flash Lite
+ * (15 RPM / 500 per day) and 3 Flash. Larger Flash models and Gemma took
+ * 20-40 s, so they are left out (add them via GEMINI_BACKUP_MODELS if needed).
+ * Override with GEMINI_MODELS / GEMINI_BACKUP_MODELS="model-a,model-b".
+ */
+const list = (v: string | undefined, d: string) => (v || d).split(",").map((m) => m.trim()).filter(Boolean);
+
+function geminiProvider(model: string, pool: boolean, apiKey: string | undefined): Provider {
+  const gemma = model.startsWith("gemma");
+  return {
+    id: `gemini:${model}`,
+    label: gemma ? `Gemma (${model})` : `Gemini (${model})`,
+    baseURL: GEMINI,
+    model,
+    apiKey,
+    jsonMode: !gemma,
+    extra: gemma ? undefined : { reasoning_effort: "low" },
+    pool,
+  };
+}
+
 function providers(): Provider[] {
   const env = process.env;
-  const all: Provider[] = [
-    { id: "groq", label: "Groq", baseURL: "https://api.groq.com/openai/v1", model: env.GROQ_MODEL || "llama-3.3-70b-versatile", apiKey: env.GROQ_API_KEY, jsonMode: true },
-    { id: "groq-fast", label: "Groq (fast)", baseURL: "https://api.groq.com/openai/v1", model: env.GROQ_FAST_MODEL || "llama-3.1-8b-instant", apiKey: env.GROQ_API_KEY, jsonMode: true },
-    { id: "gemini", label: "Gemini", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", model: env.GEMINI_MODEL || "gemini-2.5-flash", apiKey: env.GEMINI_API_KEY, jsonMode: true },
-    { id: "openrouter", label: "OpenRouter", baseURL: "https://openrouter.ai/api/v1", model: env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free", apiKey: env.OPENROUTER_API_KEY, jsonMode: false },
+  const key = env.GEMINI_API_KEY;
+  const gemini: Provider[] = [
+    ...list(env.GEMINI_MODELS, "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3-flash-preview").map((m) => geminiProvider(m, true, key)),
+    ...list(env.GEMINI_BACKUP_MODELS, "").map((m) => geminiProvider(m, false, key)),
   ];
-  const order = (env.LLM_ORDER || "").split(",").map((s) => s.trim()).filter(Boolean);
-  return order.length ? order.map((id) => all.find((p) => p.id === id)).filter((p): p is Provider => !!p) : all;
+  const all: Provider[] = [
+    ...gemini,
+    { id: "groq", label: "Groq", baseURL: GROQ, model: env.GROQ_MODEL || "llama-3.3-70b-versatile", apiKey: env.GROQ_API_KEY, jsonMode: true, pool: true },
+    { id: "groq-fast", label: "Groq (fast)", baseURL: GROQ, model: env.GROQ_FAST_MODEL || "llama-3.1-8b-instant", apiKey: env.GROQ_API_KEY, jsonMode: true, pool: false },
+    { id: "openrouter", label: "OpenRouter", baseURL: "https://openrouter.ai/api/v1", model: env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free", apiKey: env.OPENROUTER_API_KEY, jsonMode: false, pool: false },
+  ];
+  return all;
+}
+
+let rrCounter = 0;
+
+/**
+ * Round-robin: request 1 starts at model A, request 2 at model B, request 3 at
+ * model C, request 4 back at A... If the chosen model fails, the rest of the
+ * pool is tried in order, then the backups. Spreads load across free quotas.
+ */
+function rotation(): Provider[] {
+  const ready = providers().filter((p) => p.apiKey);
+  const pool = ready.filter((p) => p.pool);
+  const backups = ready.filter((p) => !p.pool);
+  if (pool.length === 0) return backups;
+  const start = rrCounter++ % pool.length;
+  return [...pool.slice(start), ...pool.slice(0, start), ...backups];
 }
 
 const status = new Map<string, ProviderStatus>();
 const cache = new Map<string, LLMResult>();
 const CACHE_MAX = 300;
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
-const RETRIES = 2;
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 25000);
+const RETRIES = 1;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -75,6 +126,7 @@ export function providerStatus(): ProviderStatus[] {
       lastError: s?.lastError,
       cooldownUntil: cooling ? s!.cooldownUntil : undefined,
       lastLatencyMs: s?.lastLatencyMs,
+      calls: s?.calls ?? 0,
     };
   });
 }
@@ -101,8 +153,7 @@ export async function complete(messages: ChatMessage[], opts: { json?: boolean; 
   if (hit) return { ...hit, cached: true, latencyMs: 0 };
 
   const errors: string[] = [];
-  for (const p of providers()) {
-    if (!p.apiKey) continue;
+  for (const p of rotation()) {
     const s = status.get(p.id) ?? { id: p.id, label: p.label, model: p.model, configured: true, state: "ok" as const };
     if (s.cooldownUntil && s.cooldownUntil > Date.now()) {
       errors.push(`${p.label}: cooling down after rate limit`);
@@ -119,11 +170,12 @@ export async function complete(messages: ChatMessage[], opts: { json?: boolean; 
           temperature: opts.temperature ?? 0.2,
           max_tokens: opts.maxTokens ?? 1800,
           ...(opts.json && p.jsonMode ? { response_format: { type: "json_object" as const } } : {}),
-        });
-        const text = res.choices[0]?.message?.content?.trim() ?? "";
+          ...(p.extra ?? {}),
+        } as OpenAI.ChatCompletionCreateParamsNonStreaming);
+        const text = stripThoughts(res.choices[0]?.message?.content ?? "");
         if (!text) throw new Error("empty response");
         const latencyMs = Date.now() - started;
-        status.set(p.id, { ...s, state: "ok", lastError: undefined, cooldownUntil: undefined, lastLatencyMs: latencyMs });
+        status.set(p.id, { ...s, state: "ok", lastError: undefined, cooldownUntil: undefined, lastLatencyMs: latencyMs, calls: (s.calls ?? 0) + 1 });
         const result = { text, provider: p.label, model: p.model, latencyMs, cached: false };
         if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
         cache.set(key, result);
@@ -142,12 +194,21 @@ export async function complete(messages: ChatMessage[], opts: { json?: boolean; 
           break; // not transient
         }
         status.set(p.id, { ...s, state: "error", lastError: msg });
+        if (/timed? ?out/i.test(msg)) {
+          errors.push(msg);
+          break; // slow model: try the next one instead of waiting again
+        }
         if (attempt < RETRIES) await sleep(500 * 2 ** attempt);
         else errors.push(msg);
       }
     }
   }
   throw new AllProvidersFailed(errors.length ? errors : ["no AI provider configured"]);
+}
+
+/** Removes reasoning blocks some open models put before the answer. */
+export function stripThoughts(text: string): string {
+  return text.replace(/<(thought|think)>[\s\S]*?<\/\1>/gi, "").replace(/^[\s\S]*<\/(?:thought|think)>/i, "").trim();
 }
 
 /** Pulls the first JSON object out of a model reply (handles ```json fences). */
